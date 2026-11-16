@@ -566,11 +566,16 @@ class Engine:
         native = [r for r in counted if r["cls"] in NATIVE]
         spec = collections.Counter(r["domain"] for r in native if r["domain"] and (soft.get(r["sw"], {}).get("role") or "specific") != "general")
         domain = basis = conf = ""
+        tot = sum(spec.values())
+        if spec and tot < 3 and tot / max(1, len(native)) < 0.05:
+            # GildData fix: a stray file of a specific tool must not decide a whole project (1 LTspice .asc among 160 FreeCAD models made
+            # it Electronics, Medium). Too few votes: fall through to headers and names, and say so in Review.
+            notes.append(f"specific tool votes too few to decide ({', '.join(f'{d}: {k}' for d, k in spec.most_common())} of {len(native)} native files)")
+            spec = collections.Counter()
         if spec:
             domain, top = spec.most_common(1)[0]
-            tot = sum(spec.values())
             share, cover = top / tot, tot / max(1, len(native))
-            conf = "High" if share >= 0.9 and cover >= 0.2 else "Medium" if share >= 0.6 else "Low"
+            conf = "High" if share >= 0.9 and cover >= 0.2 else "Medium" if share >= 0.6 and cover >= 0.05 else "Low"
             basis = "specific tools"
             general = len(native) - tot
             notes.append(f"decided by {', '.join(f'{d} tools: {k} files' for d, k in spec.most_common())}" + (f"; {general} files of general-purpose CAD (AutoCAD / Rhino ...) did not vote" if general else ""))
@@ -662,7 +667,8 @@ class Engine:
             sh_real = [r for r, (_v, b) in zip(sh_rows, used) if b == SHEET_BASIS_COUNTED]
             sheet_stats = [sum(v for v, _b in used if v != ""), n_real, n_model, len(sh_no) + n_nodata,
                            round(sum(r["sheets_conf"] for r in sh_real) / len(sh_real)) if sh_real else "", min((r["sheets_conf"] for r in sh_real), default="")]
-            STATUS_TEXT = {"unsupported-r2007": "AutoCAD 2007 format (not supported)", "no-layouts-in-version": "older than AutoCAD 2000 / no layouts in this file",
+            STATUS_TEXT = {"truncated": "the file is shorter than its own header says (cut short or damaged)", "dxf-inconsistent": "layout records do not add up (the file may be damaged)",
+                           "dxf-incomplete": "the file ends early (no EOF marker); count covers only the part present", "unsupported-r2007": "AutoCAD 2007 format (not supported)", "no-layouts-in-version": "older than AutoCAD 2000 / no layouts in this file",
                            "dxf-binary": "binary DXF (not supported)", "too-large": "file larger than the size limit", "unreadable": "file could not be read",
                            "not-dwg": "not an AutoCAD file in spite of the extension", "not-read-tiered": "cloud-tiered file, deliberately not opened (it would be downloaded)", "no-layout-objects": "no layout found in the file",
                            "handle-mismatch": "file structure did not check out", "object-map": "object table not understood", "class-table": "class table not understood"}

@@ -258,3 +258,17 @@ flac,OTHER
 ogg,OTHER
 tgz,ARCHIVE
 so,DATA
+kicad_mod,EDA
+kicad_sym,EDA
+kicad_pro,EDA
+kicad_prl,EDA
+kicad_dru,EDA
+kicad_wks,EDA
+gbrjob,EDA
+ibs,EDA
+dxfb,DRAWING
+brep,NEUTRAL3D
+glb,NEUTRAL3D
+gltf,NEUTRAL3D
+scr,OTHER
+ipynb,DATA

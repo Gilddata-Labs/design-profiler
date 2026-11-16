@@ -116,6 +116,14 @@ class NameMap:
             table[key] = hit
         return hit[0]
 
+    def peek_project(self, name):
+        """GildData: the code `project(name)` would give, WITHOUT adding the name to the map (used for the zip file name); None when the
+        codes are per run counters (no key), where a peek cannot be known in advance."""
+        if self._key is None:
+            return None
+        digest = hmac.new(self._key, f"project\0{name.casefold()}".encode("utf-8"), hashlib.sha256).hexdigest()
+        return f"{self._prefix['project']}-{self.run}-{digest[:HEX_WIDTH['project']]}"
+
     # ---- single names
     def project(self, name):
         return name if name in ROOT_NAMES else self._code("project", name)

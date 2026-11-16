@@ -46,6 +46,7 @@ def _res(n, conf, method, note="", code=None):
 
 # ------------------------------------------------------------------------------------------------------------ DXF
 _DXF_LAYOUT = re.compile(rb"(?:^|\n)[ \t]*0[ \t]*\r?\n[ \t]*LAYOUT[ \t]*\r?(?:\n|$)")
+_DXF_SUBCLASS = re.compile(rb"(?:^|\n)[ \t]*100[ \t]*\r?\n[ \t]*AcDbLayout[ \t]*\r?(?:\n|$)")
 _DXF_MODEL = re.compile(rb"AcDbLayout[ \t]*\r?\n[ \t]*1[ \t]*\r?\n[ \t]*Model[ \t]*\r?(?:\n|$)", re.I)
 
 
@@ -54,9 +55,21 @@ def dxf_sheets(data):
         return _res(None, 0, "dxf-binary", "binary DXF is not supported", "dxf-binary")
     n = len(_DXF_LAYOUT.findall(data))
     if n == 0:
+        # GildData fix: only a pre R2000 DXF lacks layouts because of its version; a newer one without LAYOUT objects is a partial
+        # export (no OBJECTS section, or a fragment), which is a different reason and must not be reported as the version's.
+        m = re.search(rb"\$ACADVER[ \t]*\r?\n[ \t]*1[ \t]*\r?\n[ \t]*AC(\d{4})", data[:65536])
+        if m and int(m.group(1)) >= 1015:
+            return _res(None, 0, "dxf", "this DXF has no LAYOUT objects (a partial export or a fragment)", "no-layout-objects")
         return _res(None, 0, "dxf", "no LAYOUT objects (a DXF older than R2000 has no layouts)", "no-layouts-in-version")
     model = bool(_DXF_MODEL.search(data))
     conf = 99 if model else 80
+    # GildData fix: in a damaged DXF one LAYOUT record can be unreadable while the rest looks fine (a flipped bit gave a wrong count at
+    # confidence 99). Every LAYOUT object carries the subclass marker AcDbLayout exactly once: the two counts must agree.
+    markers = len(_DXF_SUBCLASS.findall(data))
+    if markers != n:
+        return _res(max(0, n - 1), 40, "dxf-layout-objects", f"{n} LAYOUT objects but {markers} AcDbLayout markers: the file may be damaged", "dxf-inconsistent")
+    if not re.search(rb"(?:^|\n)[ \t]*0[ \t]*\r?\n[ \t]*EOF[ \t]*\s*$", data[-64:]):   # GildData: a complete DXF ends with 0 / EOF
+        return _res(max(0, n - 1), 50, "dxf-layout-objects", "the file ends early (no EOF marker): the count covers only the part present", "dxf-incomplete")
     return _res(max(0, n - 1), conf, "dxf-layout-objects", "" if model else "no layout named Model found: the count may include or miss it")
 
 
@@ -542,7 +555,35 @@ def _sections_r2004(d):
     raise err
 
 
+def _r2004_header(d):
+    """The encrypted R2004+ file header at 0x80 (0x6C bytes, XOR with the published LCG sequence), or None if it does not decrypt."""
+    if len(d) < 0x80 + 0x6C:
+        return None
+    seed, out = 1, bytearray()
+    for i in range(0x6C):
+        seed = (seed * 0x343FD + 0x269EC3) & 0xFFFFFFFF
+        out.append(d[0x80 + i] ^ ((seed >> 16) & 0xFF))
+    return bytes(out) if out.startswith(b"AcFssFcAJMB") else None
+
+
+def _truncated_r2004(d):
+    """GildData fix: a file cut short can still hold an older, valid page map earlier in the file, which gave a confident but wrong count
+    on a test file cut at 99%. The header says where the section page map and the second (backup) header live; both must lie inside the
+    file. Returns a reason, or None when the file is complete as far as the header can tell (or the header does not decrypt)."""
+    h = _r2004_header(d)
+    if h is None:
+        return None
+    second_header = struct.unpack_from("<Q", h, 0x34)[0]
+    page_map = struct.unpack_from("<Q", h, 0x54)[0] + 0x100
+    if second_header >= len(d) or page_map >= len(d):
+        return f"the file is shorter than its own header says ({len(d):,} bytes; the header points to byte {max(second_header, page_map):,})"
+    return None
+
+
 def _dwg_r2004(d, version):
+    cut = _truncated_r2004(d)
+    if cut:
+        return _res(None, 0, "dwg-" + version, cut, "truncated")
     try:
         secs = _sections_r2004(d)
     except SectionError as e:

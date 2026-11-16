@@ -54,13 +54,35 @@ def cmd_check(a):
     return 1 if rep["verdict"] == "FAIL" else 0
 
 
+def _label(a, coded):
+    """--name, else in coded mode the folder's own code (P-xxxx-hhhhhh, the same code its name map uses), so the zip's FILE NAME does
+    not carry the real folder name either; real names mode keeps the folder name, as upstream does."""
+    if a.name or not coded:
+        return a.name
+    try:
+        import name_anon
+        key, where = name_anon.load_key(a.out or _default_out())
+        return name_anon.NameMap(key=key, key_path=where).project(os.path.basename(os.path.abspath(a.folder)))
+    except Exception:  # noqa: BLE001
+        return "dataset"
+
+
+def _folder(a):
+    a.folder = (a.folder or _ask_folder() or "").strip().strip('"')
+    return a.folder
+
+
 def cmd_quick(a):
     import file_profiler as fp
+    if not _folder(a):
+        return 1
+    coded = _names(a)
+    a.name = _label(a, coded)
     argv = [a.folder] if a.folder else []
     argv += ["--quick", "--out", a.out or _default_out()]
     argv += [] if not a.name else ["--name", a.name]
     argv += [] if not a.project_depth else ["--project-depth", str(a.project_depth)]
-    argv += ["--anonymize-names"] if _names(a) else []
+    argv += ["--anonymize-names"] if coded else []
     argv += ["--no-paths"] if a.no_paths else []
     argv += [] if not a.workers else ["--workers", str(a.workers)]
     return fp.main(argv)
@@ -68,11 +90,15 @@ def cmd_quick(a):
 
 def cmd_extract(a):
     import file_profiler as fp
+    if not _folder(a):
+        return 1
+    coded = _names(a)
+    a.name = _label(a, coded)
     argv = [a.folder] if a.folder else []
     argv += ["--out", a.out or _default_out(), "--level", str(a.level)]
     argv += [] if not a.name else ["--name", a.name]
     argv += [] if not a.project_depth else ["--project-depth", str(a.project_depth)]
-    argv += ["--anonymize-names"] if _names(a) else []
+    argv += ["--anonymize-names"] if coded else []
     argv += ["--fresh"] if a.fresh else []
     argv += [] if not a.workers else ["--workers", str(a.workers)]
     return fp.main(argv)

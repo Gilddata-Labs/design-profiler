@@ -90,6 +90,17 @@ except ImportError:
     gd_manifest = None
 
 
+def _file_label(label, nm):
+    """GildData: with coded names, the zip FILE names (profile_, quick_, run_stats_, name_map_) carry the folder's code, not its real name
+    (upstream coded the contents but kept e.g. profile_AcmeClientProjects_<date>.zip). A code given as --name is kept as it is."""
+    if not nm or re.fullmatch(r"P-[0-9a-f]{4}-[0-9a-f]+", label or ""):
+        return label
+    try:
+        return nm.peek_project(label) or "dataset"      # computed, not recorded: the name map lists projects only
+    except Exception:  # noqa: BLE001
+        return "dataset"
+
+
 def _gd_stamp(zip_path, kind, tier, nm, project_depth, log=print):
     """GildData addition: stamp manifest.json into a finished zip. Never fails the run; a zip without a manifest is flagged at compile."""
     if gd_manifest is None:
@@ -112,6 +123,43 @@ CAD_SYSTEMS = [  # (substring in STEP header, lowercase) -> tag
     ("archicad", "ArchiCAD"), ("altium", "Altium"), ("kicad", "KiCad"), ("eagle", "Eagle"),
     ("calculix", "CalculiX"), ("ansys", "ANSYS"), ("abaqus", "Abaqus"),
 ]
+def _system_in(text):
+    return next((tag for key, tag in CAD_SYSTEMS if key.encode() in text), None)
+
+
+def _p21_system(low, ifc=False):
+    """Authoring tool of a STEP / IFC file, from its HEADER only (GildData fix). Upstream searched the whole first 4 KB, so words in DATA
+    lines were taken for tools: IFCPRODUCTDEFINITIONSHAPE contains "onshape" (Revit IFC exports were tagged Onshape) and a STEP
+    "fusion accuracy" entity made Open CASCADE files Fusion360. Order: for IFC the IFCAPPLICATION record (the authoring application:
+    full name, then identifier); then the FILE_NAME originating_system field, its preprocessor_version field, the rest of FILE_NAME,
+    the rest of the HEADER."""
+    if ifc:
+        m = re.search(rb"ifcapplication\s*\(\s*#\d+\s*,\s*'(?:[^']|'')*'\s*,\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'", low)
+        if m:
+            hit = _system_in(m.group(1)) or _system_in(m.group(2))
+            if hit:
+                return hit
+    hdr = re.split(rb"\bendsec\b|\bdata\s*;", low, maxsplit=1)[0]
+    m = re.search(rb"file_name\s*\((.*?)\)\s*;", hdr, re.S)
+    if m:
+        fields = re.findall(rb"'((?:[^']|'')*)'", m.group(1))   # name, time stamp, author(s), organisation(s), preprocessor, originating system, authorisation
+        tail = fields[-3:] if len(fields) >= 3 else fields
+        for f in ([tail[1], tail[0]] if len(tail) == 3 else tail[::-1]):
+            hit = _system_in(f)
+            if hit:
+                return hit
+        hit = _system_in(m.group(1))
+        if hit:
+            return hit
+    return _system_in(hdr) or "other"
+
+
+def _iges_system(low):
+    """Authoring tool of an IGES file from its Global (G) section lines only (column 73 = G), same reason as _p21_system."""
+    g = b"".join(line[:72] for line in low.splitlines() if len(line) >= 73 and line[72:73] == b"g")
+    return _system_in(g or low) or "other"
+
+
 ACAD_VERSIONS = {  # DWG/DXF $ACADVER codes -> versions (closed list)
     "AC1006", "AC1009", "AC1012", "AC1014", "AC1015", "AC1018", "AC1021", "AC1024",
     "AC1027", "AC1032",
@@ -158,6 +206,11 @@ HIT_PREFIXES = ("STEP:", "IFC:", "IGES:", "DWG:", "DXF:", "STL:", "OLE2:SolidEdg
 SAMPLE_PER_CHUNK = max(1, int(os.environ.get("PROFILER_SAMPLE_PER_CHUNK", "3")))
 
 
+# GildData: types added to the mapping by the corpus test that the compiler classifies by NAME; their header tag would only say TEXT, and on a
+# file server every open costs a network round trip (a KiCad library alone has hundreds of footprints). Boards and schematics are still read.
+GD_NAME_ONLY_EXTS = frozenset("kicad_mod kicad_sym kicad_pro kicad_prl kicad_dru kicad_wks gbrjob ibs scr ipynb".split())
+
+
 def head_policy(ext):
     """What to do with the 4 KB header of a file of this type: 'read' (CAD / drawings / assemblies: the tag names the software and what is inside),
     'sample' (a type the compiler does not know, or a container that can hold anything: only a few per chunk are read, and a type that shows CAD
@@ -166,7 +219,7 @@ def head_policy(ext):
         return "skip" if ext in NO_HEAD_EXTS else "read"
     if ext in SHEET_EXTS or ext in LINK_READ_EXTS:
         return "read"
-    if ext in NO_HEAD_EXTS:
+    if ext in NO_HEAD_EXTS or ext in GD_NAME_ONLY_EXTS:
         return "skip"
     c = EXT_CLASSES.get(ext)
     if c is None:
@@ -249,6 +302,8 @@ def _signature_file(f, ext):
     low = head.lower()
     if head.startswith(OLE_MAGIC):
         return _ole_tag(f, head)
+    if head.find(b"\x14\x00\x06\x00\x08\x00", 0, 32) != -1:  # GildData: SolidWorks 2015+ container (chunk marker at the start; real files: offset 13 or 16)
+        return "SWX:SolidWorks"
     if head.lstrip()[:5] == b"<?xml" and b"<eagle" in low:        # Eagle schematics / boards / libraries are XML with an <eagle> root
         return "EDA:Eagle"
     if b"iso-10303-21" in low[:64]:                       # STEP / Part 21
@@ -259,15 +314,14 @@ def _signature_file(f, ext):
             if b"ifc" in s:                                   # building models share STEP's wrapper
                 ifc = next((v for k, v in ((b"ifc4x3", "IFC4X3"), (b"ifc4", "IFC4"), (b"ifc2x3", "IFC2X3"),
                                            (b"ifc2x2", "IFC2X2")) if k in s), "IFC-other")
-                return f"IFC:{ifc}:" + next((tag for key, tag in CAD_SYSTEMS if key.encode() in low), "other")
+                return f"IFC:{ifc}:" + _p21_system(low, ifc=True)
             ap = ("AP203" if b"config_control" in s else "AP214" if b"automotive" in s
                   else "AP242" if b"ap242" in s or b"managed_model" in s
                   else "AP203" if b"203" in s else "AP214" if b"214" in s
                   else "AP242" if b"242" in s else "AP-other")
-        sysname = next((tag for key, tag in CAD_SYSTEMS if key.encode() in low), "other")
-        return f"STEP:{ap}:{sysname}"
+        return f"STEP:{ap}:{_p21_system(low)}"
     if ext in ("igs", "iges") or (len(head) > 80 and head[72:73] == b"S" and head[73:80].strip() == b"1"):
-        return "IGES:" + next((tag for key, tag in CAD_SYSTEMS if key.encode() in low), "other")
+        return "IGES:" + _iges_system(low)
     if head[:6].startswith(b"AC") and head[:6].decode("latin-1") in ACAD_VERSIONS:
         return "DWG:" + head[:6].decode("latin-1")        # binary DWG
     if ext == "dxf" or b"$acadver" in low:
@@ -495,6 +549,31 @@ def chunk_fingerprints(base, recurse, chunk_files, acc=None):
     return fps
 
 
+STALE_TEMP_HOURS = 12
+
+
+def _sweep_stale_temp(hours=STALE_TEMP_HOURS):
+    """GildData: a run stopped hard (kill -9, power cut) cannot clean up, and its temp listing holds real file names. Remove such leftovers
+    (profiler_listing_* / profiler_paths_* in the temp folder) when nothing in them changed for `hours`: a live run writes to its own
+    folder all the time, so an untouched one is from a run that is gone. Never raises."""
+    import tempfile
+    try:
+        tmp = tempfile.gettempdir()
+        now = time.time()
+        for n in os.listdir(tmp):
+            if not n.startswith(("profiler_listing_", "profiler_paths_")):
+                continue
+            d = os.path.join(tmp, n)
+            try:
+                newest = max([os.path.getmtime(d)] + [os.path.getmtime(os.path.join(d, f)) for f in os.listdir(d)])
+                if now - newest > hours * 3600:
+                    shutil.rmtree(d, ignore_errors=True)
+            except OSError:
+                pass
+    except Exception:  # noqa: BLE001
+        pass
+
+
 class ListingCache:
     """The folder listing made by the counting pass, kept for the process phase so that every folder is read from the disk once, not twice (on a
     slow disk or a network share listing is the slow part). Per folder: its sub-folder names and its files (name, kind, size, date, attributes), in
@@ -503,6 +582,7 @@ class ListingCache:
 
     def __init__(self, nthreads, max_bytes):
         import sqlite3, tempfile, atexit
+        _sweep_stale_temp()
         self.dir = tempfile.mkdtemp(prefix="profiler_listing_")
         atexit.register(self.close)
         self.db = sqlite3.connect(os.path.join(self.dir, "listing.db"), check_same_thread=False, isolation_level=None)
@@ -704,6 +784,7 @@ class PathStore:
         with self._mk:                                          # two threads can spill at the same moment: one folder, not two
             if self.dir is None:
                 import atexit
+                _sweep_stale_temp()
                 self.dir = tempfile.mkdtemp(prefix="profiler_paths_")      # TMPDIR / the OS temp folder; removed by close(), and at exit if an error got in the way
                 atexit.register(self.close)
         for ext, chunks in self.mem[k].items():
@@ -1163,7 +1244,8 @@ def quick_scan(root, out_dir, log=print, label=None, folders=None, workers=None,
     nfiles, nbytes = total["files"], total["bytes"]
     os.makedirs(out_dir, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    zip_path = os.path.join(out_dir, f"quick_{re.sub(r'[^A-Za-z0-9_.-]', '_', label)}_{stamp}.zip")
+    nm = _name_map(anonymize_names, out_dir)
+    zip_path = os.path.join(out_dir, f"quick_{re.sub(r'[^A-Za-z0-9_.-]', '_', _file_label(label, nm))}_{stamp}.zip")
 
     def csv_bytes(header, rows):
         buf = io.StringIO(newline="")
@@ -1171,7 +1253,6 @@ def quick_scan(root, out_dir, log=print, label=None, folders=None, workers=None,
         w.writerow(header)
         w.writerows(rows)
         return ("\ufeff" + buf.getvalue()).encode("utf-8")
-    nm = _name_map(anonymize_names, out_dir)
     pname = (lambda n: nm.project(n)) if nm else (lambda n: n)
     ext_rows = [[units[ui][0], ext, n, b, b // max(1, n)] for (ui, ext), (n, b) in sorted(ext_stats.items(), key=lambda kv: (units[kv[0][0]][0].lower(), -kv[1][0]))]
     all_rows = [[ext, n, b, f"{100 * n / max(1, nfiles):.2f}", f"{100 * b / max(1, nbytes):.2f}"] for ext, (n, b) in sorted(overall.items(), key=lambda kv: -kv[1][0])]
@@ -1851,7 +1932,7 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
     progress("process", total_files, total_files, total_bytes, total_bytes)
     os.makedirs(out_dir, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", label)
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", _file_label(label, nm))
     zip_path = os.path.join(out_dir, f"profile_{safe}_{stamp}.zip")
     stats_zip = os.path.join(out_dir, f"run_stats_{safe}_{stamp}.zip")
     proj_stats, ext_stats, nfiles_out, bytes_out = {}, {}, 0, 0
@@ -1983,7 +2064,8 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
         put("Unreadable.csv", ["project", "kind", "path", "reason"],
             [[nm.project(proj_) if nm else proj_, kind,
               ((nm.folder_path(rel) if kind == "folder" else nm.file_path(rel)) if nm else rel) if tier >= 1 else "", why]
-             for proj_, uu in man["units"].items() for rel, kind, why in uu.get("unreadable", [])])
+             for proj_, uu in man["units"].items()
+             for rel, kind, why in dict.fromkeys(tuple(x) for x in uu.get("unreadable", []))])   # GildData: a file failing in the listing AND the read was listed twice
         with z.open("Dirs.csv", "w", force_zip64=True) as out:                  # streamed: written 5,000 rows at a time
             out.write(("\ufeff" + ",".join(["dir_id", "project", "parent_dir_id", "depth"] + (["name"] if tier >= 1 else [])) + "\r\n").encode("utf-8"))
             buf_, w_, n_ = io.StringIO(newline=""), None, 0

@@ -9,7 +9,7 @@ cloud, ui). The release builder writes the word into the file EDITION; a checkou
 import os
 
 TOOL_NAME = "GildData Design Data Profiler"
-TOOL_VERSION = "0.1.0"
+TOOL_VERSION = "0.2.0"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 

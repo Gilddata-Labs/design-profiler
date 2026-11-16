@@ -121,12 +121,12 @@ with tempfile.TemporaryDirectory() as t:
 
     S = "Electronics"
     want = {"Domain": "Electronics", "Native EDA Software": "KiCad, LTspice, OrCAD", "Schematic Files": 2, "Layout (PCB) Files": 1, "Gerber Files": 4, "Drill Files": 2, "Pick-and-Place Files": 1, "BOM Files": 1,
-            "Netlist Files": 2, "Simulation Files": 1, "Library Files": 3, "Native 2D Drawings": 0, "PDF Drawings": 1, "Neutral 3D Files": 1, "Total Files": 24, "Duplicate %": 0.0,
-            "Share of Vendor EDA Files %": 88.2, "Labelled Electronics but No EDA Files (Y/N)": "", "Has Schematic and Layout (Y/N)": "Y", "Has Gerber and Drill (Y/N)": "Y",
-            "Has Netlist or Simulation (Y/N)": "Y", "Library Share of EDA Files %": 18.8, "Revisions Visible (Count)": 3}
+            "Netlist Files": 2, "Simulation Files": 1, "Library Files": 5, "Native 2D Drawings": 0, "PDF Drawings": 1, "Neutral 3D Files": 1, "Total Files": 24, "Duplicate %": 0.0,
+            "Share of Vendor EDA Files %": 89.5, "Labelled Electronics but No EDA Files (Y/N)": "", "Has Schematic and Layout (Y/N)": "Y", "Has Gerber and Drill (Y/N)": "Y",
+            "Has Netlist or Simulation (Y/N)": "Y", "Library Share of EDA Files %": 27.8, "Revisions Visible (Count)": 3}
     for col, v in want.items(): check(f"E1 {col}", cell(S, "E1", col), v)
     check("E1 EDA file types start with the most frequent (.gbr)", cell(S, "E1", "EDA Files (file types)").startswith("GBR"), True)
-    want = {"Native EDA Software": "Eagle", "Schematic Files": 1, "Layout (PCB) Files": 1, "Gerber Files": 0, "Total Files": 2, "Share of Vendor EDA Files %": 11.8, "Has Schematic and Layout (Y/N)": "Y",
+    want = {"Native EDA Software": "Eagle", "Schematic Files": 1, "Layout (PCB) Files": 1, "Gerber Files": 0, "Total Files": 2, "Share of Vendor EDA Files %": 10.5, "Has Schematic and Layout (Y/N)": "Y",
             "Has Gerber and Drill (Y/N)": "N", "Has Netlist or Simulation (Y/N)": "N", "Library Share of EDA Files %": 0.0, "Revisions Visible (Count)": 0}
     for col, v in want.items(): check(f"E2 {col} (Eagle recognised from file content)", cell(S, "E2", col), v)
     # EDA files are no longer 2D drawings in Project Compiled

@@ -1,6 +1,7 @@
 sig,software,note
 OLE2:SolidEdge,SolidEdge,verified on real Solid Edge .par/.asm/.dft files
-OLE2:Inventor,Inventor,entry names RSeDb/RSeSegInfo - not yet checked on real Inventor files
+OLE2:Inventor,Inventor,entry names RSeDb/RSeSegInfo - verified on 6 real Inventor .ipt files (GildData corpus)
+SWX:SolidWorks,SolidWorks,SolidWorks 2015+ container marker in the first 32 bytes - verified on 37 real SolidWorks 2022 files (GildData corpus)
 OLE2:Revit,Revit,entry name BasicFileInfo - not yet checked on real Revit files
 CATIA:V5,CATIA,file starts with V5_CFV2 - not yet checked on real CATIA files
 CREO,Creo,file starts with #UGC: - not yet checked on real Creo files

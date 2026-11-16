@@ -254,7 +254,8 @@ def _step_block(buf, prod, form, pdef, nauo):
                         n = int(hm.group(1))
                         args = buf[nxt:end].decode("latin-1")
                         if key == b"PRODUCT(":
-                            q = [x.replace("''", "'") for x in _Q.findall(args)]
+                            # GildData fix: Part 21 wraps long lines, and a line break inside a quoted name is not part of the name
+                            q = [x.replace("''", "'").replace("\r", "").replace("\n", "") for x in _Q.findall(args)]
                             prod[n] = tuple(x.lower() for x in q[:2] if x.strip())
                         elif key == b"NEXT_ASSEMBLY_USAGE_OCCURRENCE(":
                             r = _R.findall(args)
@@ -335,7 +336,7 @@ def _step_from_lines(lines):
             if ";" not in line:
                 continue
             st, buf = buf, ""
-            m = re.match(r"#(\d+)\s*=\s*([A-Z_0-9]+)\s*\((.*)\)\s*;", st.replace("\n", " ").replace("\r", " "), re.S)
+            m = re.match(r"#(\d+)\s*=\s*([A-Z_0-9]+)\s*\((.*)\)\s*;", st.replace("\r", "").replace("\n", ""), re.S)
             if not m:
                 continue
             n, typ, args = int(m.group(1)), m.group(2), m.group(3)

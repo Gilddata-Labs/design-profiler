@@ -258,3 +258,17 @@ flac,OTHER,,,audio
 ogg,OTHER,,,audio
 tgz,ARCHIVE,,,
 so,DATA,,,shared library
+kicad_mod,EDA,KiCad,Electronics,footprint library (GildData corpus: 326 in KiCad demos)
+kicad_sym,EDA,KiCad,Electronics,symbol library
+kicad_pro,EDA,KiCad,Electronics,project file
+kicad_prl,EDA,KiCad,Electronics,project local settings
+kicad_dru,EDA,KiCad,Electronics,design rules
+kicad_wks,EDA,KiCad,Electronics,drawing sheet template
+gbrjob,EDA,,Electronics,Gerber job file
+ibs,EDA,,Electronics,IBIS signal model
+dxfb,DRAWING,AutoCAD,,binary DXF
+brep,NEUTRAL3D,,,Open CASCADE BREP
+glb,NEUTRAL3D,,,glTF binary
+gltf,NEUTRAL3D,,,glTF
+scr,OTHER,,,AutoCAD script
+ipynb,DATA,,,Jupyter notebook

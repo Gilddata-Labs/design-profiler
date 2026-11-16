@@ -33,3 +33,6 @@ bxl,library
 fsch,schematic
 fbrd,layout
 flbr,library
+kicad_mod,library
+kicad_sym,library
+gbrjob,gerber
