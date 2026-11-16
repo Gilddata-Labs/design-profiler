@@ -25,6 +25,16 @@ PRD: "PRD: GildData Design Data Profiler v1" (Claude Doc). Decisions live in Own
 - **No self update**: the GitHub launcher (`drive-package/`) is removed; launchers start the bundled `gilddesign.py`; a new version is a new zip.
 - **Two editions**: `tools/build_release.py` writes `dist/gilddesign-<ver>-supplier.zip` (no compiler) and `-internal.zip`, plus `SHA256SUMS.txt`.
 
+## Fixes from the real file test campaign (v0.2.0)
+
+Tested on 1,434 real public files (SolidWorks, Solid Edge, Inventor, AutoCAD R12 to 2018, STEP, IFC, IGES, KiCad, FreeCAD), 300,005
+synthetic files and 4,342 damaged CAD files. Fixed: authoring tool read from the STEP / IFC / IGES header only (Revit IFC was tagged
+Onshape, Open CASCADE STEP was tagged Fusion360); SolidWorks content tag `SWX:SolidWorks`; line breaks removed from wrapped STEP product
+names; DXF statuses `no-layout-objects`, `dxf-inconsistent`, `dxf-incomplete`; DWG `truncated`; zip FILE names coded in coded mode;
+duplicate Unreadable rows; stale temp listings of killed runs swept after 12 hours; a stray specific tool file no longer decides a
+project's domain; KiCad library / project files, BREP, glTF, binary DXF mapped. Regression tests: `tests/test_gd_fixes.py`
+(set `GD_CORPUS` to a folder of real DWG files for the truncation checks).
+
 ## Tests
 
 `python3 tests/test_gd.py` (our layer; set `GD_UPSTREAM=/path/to/data847/folder-profiler` to also prove identical counts against the
