@@ -84,6 +84,20 @@ try:
     import name_anon
 except ImportError:          # optional feature: the profiler works without it, the option is then refused
     name_anon = None
+try:
+    import gd_manifest       # GildData: manifest.json in every zip (tool, version, level, names coded or real, member checksums)
+except ImportError:
+    gd_manifest = None
+
+
+def _gd_stamp(zip_path, kind, tier, nm, project_depth, log=print):
+    """GildData addition: stamp manifest.json into a finished zip. Never fails the run; a zip without a manifest is flagged at compile."""
+    if gd_manifest is None:
+        return
+    try:
+        gd_manifest.stamp(zip_path, kind, detail_level=tier, names_coded=bool(nm), project_depth=project_depth, engine_version=VERSION)
+    except Exception as e:  # noqa: BLE001
+        log(f"note: manifest.json could not be added ({type(e).__name__}: {e})")
 HEAD_BYTES = 4096            # header peek (not for NO_HEAD_EXTS: see below)
 DXF_SCAN_BYTES = 1_048_576   # DXF only: scan up to 1 MB for 3D entity names (flag only, text discarded)
 
@@ -1205,6 +1219,7 @@ def quick_scan(root, out_dir, log=print, label=None, folders=None, workers=None,
     map_zip = ""
     if nm and name_map:
         map_zip = nm.write_zip(os.path.join(out_dir, f"name_map_{re.sub(r'[^A-Za-z0-9_.-]', '_', label)}_{stamp}.zip"), label)
+    _gd_stamp(zip_path, "quick", None, nm, project_depth, log)
     LAST_RUN.clear()
     LAST_RUN.update(map_zip=map_zip, quick_zip=zip_path, top=[[e, n, b] for e, n, b, *_ in all_rows[:12]], total_bytes=nbytes, distinct_extensions=len(overall),
                     seconds=round(secs, 1))
@@ -2077,6 +2092,7 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
     map_zip = ""
     if nm and name_map:                     # SEPARATE from the profile zip: whoever gets the profile cannot reverse the codes
         map_zip = nm.write_zip(os.path.join(out_dir, f"name_map_{safe}_{stamp}.zip"), label)
+    _gd_stamp(zip_path, "profile", tier, nm, project_depth, log)
     LAST_RUN.update(zip=zip_path, stats_zip=stats_zip, map_zip=map_zip)
     return zip_path, len(units), nfiles_out, C["errors"]
 
@@ -2278,7 +2294,7 @@ def main(argv=None):
         print("Top file types: " + ", ".join(f".{e} {n:,}" for e, n, _b in LAST_RUN.get("top", [])[:8]))
         shown = os.path.basename(qz) if os.environ.get("PROFILER_IN_DOCKER") else qz
         print(f"\nPlease send us this ONE file{' (in the output folder)' if os.environ.get('PROFILER_IN_DOCKER') else ''}:\n  {shown}")
-        print("Step 2 (the full profile) is the same command without --quick.")
+        print("Next: Step 2, the full profile (gilddesign extract, or the Step 2 button of the page).")
         reveal(qz)
         return 0
     print(f"Profiling: {label or folder}\n(read-only; nothing is copied or sent anywhere)\n")

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Run the Folder Profiler inside Docker (macOS / Linux).
+# Run the GildData Design Data Profiler (Step 2) inside Docker (macOS / Linux).
 #   ./run-docker.sh /path/to/parent-folder
 # The container sees your folder READ-ONLY, has NO network, runs as a non-root user with a read-only
 # filesystem and no extra privileges. The metrics zip appears in ./output.
 set -euo pipefail
 cd "$(dirname "$0")"
-IMAGE="folder-profiler:1.9"
+IMAGE="gilddesign:0.1.0"
 SRC="${1:-}"
 shift || true          # anything after the folder is passed to the profiler, e.g. --level 2 --project-depth 2
 [ -n "$SRC" ] || read -r -p "Drag the folder here and press Enter: " SRC

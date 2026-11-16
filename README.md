@@ -1,3 +1,38 @@
+# GildData Design Data Profiler
+
+GildData's profiler for design datasets (CAD, BIM, EDA). A seller runs it on their own machine and sends us one zip of metrics;
+GildData compiles the zips into the catalogue, QC and buyer workbooks. Built on the Folder Profiler engine
+(data847/folder-profiler, commit in `UPSTREAM_COMMIT`); everything below the line is the engine's own documentation.
+PRD: "PRD: GildData Design Data Profiler v1" (Claude Doc). Decisions live in Ownr, Gilddata Commons, project Gilddata CAD Folder Profiler.
+
+## Commands (`python3 gilddesign.py <command>`)
+
+| Command | Edition | What it does |
+| --- | --- | --- |
+| `check FOLDER` | both | Python, read access, output folder, size of the job, Step 1 time; opens no file; report has counts only |
+| `quick FOLDER` | both | Step 1: files per type and size per project; opens no file |
+| `extract FOLDER` | both | Step 2: full profile, detail level 2 by default (`--level 0/1/2`) |
+| `cloud fusion ...` | both | Same zip from an Autodesk Fusion hub (metadata only) |
+| `ui` | both | The same steps in a local browser page (127.0.0.1 only) |
+| `compile ZIPS -- [compiler options]` | internal | Zips to the compiled workbook (checks every manifest first) |
+| `compare A.zip B.zip` | internal | File counts and bytes per type side by side; exit 0 when identical |
+| `verify ZIPS` | internal | manifest.json present and no member changed after the run |
+
+## What our layer changes in the engine
+
+- **Names coded by default** in the CLI and the page; real names only with `--real-names` (or by unticking the box), recorded in the manifest.
+- **manifest.json in every zip**: tool, version, edition, kind, detail level, names coded or real, SHA256 of every member.
+- **No self update**: the GitHub launcher (`drive-package/`) is removed; launchers start the bundled `gilddesign.py`; a new version is a new zip.
+- **Two editions**: `tools/build_release.py` writes `dist/gilddesign-<ver>-supplier.zip` (no compiler) and `-internal.zip`, plus `SHA256SUMS.txt`.
+
+## Tests
+
+`python3 tests/test_gd.py` (our layer; set `GD_UPSTREAM=/path/to/data847/folder-profiler` to also prove identical counts against the
+upstream engine) and every `tests/test_*.py` of the engine. `test_structure.py` has one check that fails only when run as root (root can
+read a locked folder).
+
+---
+
 # Folder Profiler
 
 Measures a folder of CAD/engineering projects and writes **metrics only** — file extensions, sizes, dates,

@@ -1,6 +1,6 @@
 @echo off
-rem Folder Profiler launcher. Double-click, OR drag a folder onto this file.
-rem This file only starts file_profiler.py (open it in Notepad to read everything it does).
+rem GildData Design Data Profiler, Step 2 (full profile). Double-click, OR drag a folder onto this file.
+rem This file only starts gilddesign.py (open it in Notepad to read everything it does).
 cd /d "%~dp0"
 if exist "%~dp0python\python.exe" (
   set "PY=%~dp0python\python.exe"
@@ -14,6 +14,6 @@ if exist "%~dp0python\python.exe" (
   )
   set "PY=python"
 )
-"%PY%" "%~dp0file_profiler.py" %*
+"%PY%" "%~dp0gilddesign.py" extract %*
 echo.
 pause

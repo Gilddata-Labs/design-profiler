@@ -4,8 +4,8 @@
 services:
   profiler-ui:
     build: .
-    image: folder-profiler:1.9-ui
-    entrypoint: ["python", "/app/ui.py"]
+    image: gilddesign:0.1.0-ui
+    entrypoint: ["python", "/app/gilddesign.py", "ui"]
     ports:
       - "127.0.0.1:8765:8765"   # loopback only: reachable from this computer, not the network
     volumes:
@@ -13,7 +13,7 @@ services:
       - ./output:/out
     user: "${PUID:-1000}:${PGID:-1000}"
     environment:
-      PROFILER_WORKERS: "${PROFILER_WORKERS:-}"   # parallel hashing threads; empty = auto
+      PROFILER_WORKERS: "${PROFILER_WORKERS:-}"   # parallel reader threads; empty = auto
       PROFILER_TIER: "${PROFILER_TIER:-}"         # detail level 0/1/2 (also choosable on the page)
     read_only: true
     cap_drop: [ALL]
