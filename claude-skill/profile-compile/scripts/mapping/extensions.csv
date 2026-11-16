@@ -1,0 +1,260 @@
+ext,class,software,domain,note
+sldprt,PART,SolidWorks,,
+par,PART,SolidEdge,,
+psm,PART,SolidEdge,,
+ipt,PART,Inventor,,
+catpart,PART,CATIA,,
+prt,PART,,,ambiguous (NX/Creo) - software left blank
+f3d,PART,Fusion360,,single-file design counted as a part (a Fusion design can hold several components; not opened)
+fcstd,PART,FreeCAD,,
+3dm,PART,Rhino,,
+skp,PART,SketchUp,Architecture,
+rvt,PART,Revit,Architecture,single-file model counted as a part
+rfa,PART,Revit,Architecture,
+sldasm,ASSEMBLY,SolidWorks,,
+asm,ASSEMBLY,,,ambiguous (SolidEdge/Creo) - software left blank
+iam,ASSEMBLY,Inventor,,
+catproduct,ASSEMBLY,CATIA,,
+slddrw,DRAWING,SolidWorks,,
+dft,DRAWING,SolidEdge,,
+idw,DRAWING,Inventor,,
+drw,DRAWING,Creo,,
+catdrawing,DRAWING,CATIA,,
+dwg,DRAWING,AutoCAD,,
+dxf,DRAWING,,,open format - software left blank
+dwf,DRAWING,AutoCAD,,
+schdoc,EDA,Altium,Electronics,schematic
+pcbdoc,EDA,Altium,Electronics,PCB layout
+kicad_sch,EDA,KiCad,Electronics,schematic
+kicad_pcb,EDA,KiCad,Electronics,PCB layout
+sch,EDA,,Electronics,ambiguous (Eagle/KiCad) - software left blank
+brd,EDA,,Electronics,ambiguous - software left blank
+gbr,EDA,,Electronics,Gerber
+ger,EDA,,Electronics,Gerber
+step,NEUTRAL3D,,,
+stp,NEUTRAL3D,,,
+iges,NEUTRAL3D,,,
+igs,NEUTRAL3D,,,
+x_t,NEUTRAL3D,,,Parasolid
+x_b,NEUTRAL3D,,,Parasolid
+stl,NEUTRAL3D,,,
+obj,NEUTRAL3D,,,
+3mf,NEUTRAL3D,,,
+ifc,NEUTRAL3D,,Architecture,
+pdf,PDF,,,counted as PDF Drawings only with --pdf-drawings all
+inp,SIM,,,Abaqus and CalculiX share this
+frd,SIM,CalculiX,,
+dat,SIM,,,
+msh,SIM,,,
+vtu,SIM,,,
+vtk,SIM,,,
+sta,SIM,,,
+cvg,SIM,,,
+odb,SIM,Abaqus,,
+doc,DOC,,,
+docx,DOC,,,
+xls,DOC,,,
+xlsx,DOC,,,
+ppt,DOC,,,
+pptx,DOC,,,
+txt,DOC,,,
+md,DOC,,,
+rtf,DOC,,,
+html,DOC,,,
+htm,DOC,,,
+csv,DATA,,,
+json,DATA,,,
+xml,DATA,,,
+yaml,DATA,,,
+yml,DATA,,,
+log,DATA,,,
+out,DATA,,,
+ini,DATA,,,
+12d,DATA,,,
+sldmat,DATA,,,
+png,IMG,,,
+jpg,IMG,,,
+jpeg,IMG,,,
+gif,IMG,,,
+bmp,IMG,,,
+tif,IMG,,,
+tiff,IMG,,,
+svg,IMG,,,
+zip,ARCHIVE,,,
+7z,ARCHIVE,,,
+rar,ARCHIVE,,,
+gz,ARCHIVE,,,
+tar,ARCHIVE,,,
+(none),OTHER,,,
+pwd,ASSEMBLY,SolidEdge,,Solid Edge weldment (an assembly-type document)
+jt,NEUTRAL3D,,,JT visualization / neutral 3D
+sat,NEUTRAL3D,,,ACIS neutral 3D
+sab,NEUTRAL3D,,,ACIS neutral 3D (binary)
+3dxml,NEUTRAL3D,,,CATIA / 3DEXPERIENCE neutral 3D
+cgr,NEUTRAL3D,,,CATIA graphical representation
+wrl,NEUTRAL3D,,,VRML
+dae,NEUTRAL3D,,,Collada
+fbx,NEUTRAL3D,,,
+x3d,NEUTRAL3D,,,
+dgn,DRAWING,,,MicroStation drawing
+dwfx,DRAWING,AutoCAD,,
+bak,DATA,,,backup copy (often of a DWG) - not counted as a drawing
+skb,DATA,,,SketchUp backup - not counted as a model
+psd,IMG,,,Photoshop image
+prn,DATA,,,printer / plot output file
+max,PART,3dsMax,,3ds Max scene counted as a 3D model (visualisation; domain left blank)
+old,DATA,,,backup copy
+cfg,DATA,,,configuration / settings (OLE storage in Solid Edge folders), not a model
+dwl,DATA,,,AutoCAD lock file
+dwl2,DATA,,,AutoCAD lock file
+dwt,DATA,,,AutoCAD template
+ctb,DATA,,,AutoCAD plot style
+stb,DATA,,,AutoCAD plot style
+pc3,DATA,,,AutoCAD plotter configuration
+atc,DATA,,,AutoCAD tool palette
+lxds,DATA,,,
+srp,DATA,,,
+rpt,DATA,,,report file
+ipj,DATA,,,Inventor project file
+ipn,DATA,Inventor,,Inventor presentation (exploded view) - not a model
+dll,DATA,,,software
+exe,DATA,,,software
+ocx,DATA,,,software
+lib,EDA,,Electronics,library (SPICE / schematic / footprint); software left blank
+exp,DATA,,,software
+ilk,DATA,,,software
+manifest,DATA,,,
+lnk,DATA,,,shortcut
+lck,DATA,,,lock file
+err,DATA,,,
+inf,DATA,,,
+bat,DATA,,,
+js,DATA,,,
+php,DATA,,,
+ico,DATA,,,
+mpr,DATA,,,
+hcg,DATA,,,
+sev,DATA,,,
+tmp,DATA,,,temporary file
+z$w,DATA,,,temporary file
+mp4,OTHER,,,video
+wmv,OTHER,,,video
+mov,OTHER,,,video
+avi,OTHER,,,video
+mkv,OTHER,,,video
+iso,ARCHIVE,,,disk image
+ttf,DATA,,,font
+otf,DATA,,,font
+ttc,DATA,,,font
+woff,DATA,,,web font
+woff2,DATA,,,web font
+eot,DATA,,,web font
+css,DATA,,,web
+map,DATA,,,web source map / data
+py,DATA,,,script
+rb,DATA,,,Ruby script (SketchUp plugin)
+rbe,DATA,,,encrypted Ruby (SketchUp plugin)
+rbs,DATA,,,scrambled Ruby (SketchUp plugin)
+lsp,DATA,,,AutoLISP script
+arx,DATA,,,AutoCAD plugin
+shx,DATA,,,AutoCAD font
+dyn,DATA,,,Dynamo graph
+dyf,DATA,,,Dynamo custom node
+qm,DATA,,,translation
+strings,DATA,,,translation
+lang,DATA,,,translation
+lingvo,DATA,,,translation
+msi,DATA,,,installer
+cab,DATA,,,installer package
+msp,DATA,,,installer patch
+tlb,DATA,,,type library
+pak,DATA,,,game / app resource pack
+h,DATA,,,source header
+sig,DATA,,,signature
+3dmbak,DATA,,,Rhino backup - not counted as a model
+dwgbak,DATA,,,AutoCAD backup - not counted as a drawing
+dds,IMG,,,texture
+psb,IMG,,,Photoshop large document
+arw,IMG,,,Sony raw photo
+heic,IMG,,,photo
+webp,IMG,,,image
+ls8,OTHER,,,Lumion scene (visualisation)
+ls10,OTHER,,,Lumion scene (visualisation)
+ls12,OTHER,,,Lumion scene (visualisation)
+ls11,OTHER,,,Lumion scene (visualisation)
+inn,OTHER,,,Lumion library model
+mtt,OTHER,,,Lumion library data
+txx,OTHER,,,Lumion library texture data
+sim,OTHER,,,Lumion material
+ltm,OTHER,,,Lumion tree model
+ldf,OTHER,,,Lumion HDR sky
+srt,OTHER,,,SpeedTree model (Lumion trees)
+vismat,OTHER,,,visualisation material (render library)
+pcp,DATA,,,AutoCAD plot configuration written next to exported DWGs
+zdct,DATA,,,Adobe resource
+clx,DATA,,,installed-software data
+xfo,DATA,,,installed-software template data
+tds,DATA,,,installed-software template
+gpd,DATA,,,printer driver
+dpb,DATA,,,printer driver
+asr,DATA,,,Autodesk licensing data
+fx,DATA,,,shader
+pimx,DATA,,,Adobe package data
+tbl,DATA,,,Revit shared table
+las,DATA,,,geodetic grid shift file
+los,DATA,,,geodetic grid shift file
+b,DATA,,,geodetic grid file
+cfa,DATA,,,Premiere audio preview
+pek,DATA,,,Premiere peak file
+download,DATA,,,unfinished browser download
+img,DATA,,,disk image / installer
+bin,DATA,,,binary data / installer
+3dm_tmp,DATA,,,Rhino temporary file
+dsn,EDA,OrCAD,Electronics,schematic (OrCAD Capture design)
+opj,EDA,OrCAD,Electronics,OrCAD project
+pcb,EDA,,Electronics,PCB layout (software left blank)
+prjpcb,EDA,Altium,Electronics,Altium project
+gtl,EDA,,Electronics,Gerber top copper
+gbl,EDA,,Electronics,Gerber bottom copper
+gts,EDA,,Electronics,Gerber top solder mask
+gbs,EDA,,Electronics,Gerber bottom solder mask
+gto,EDA,,Electronics,Gerber top silkscreen
+gbo,EDA,,Electronics,Gerber bottom silkscreen
+drl,EDA,,Electronics,drill file
+xln,EDA,,Electronics,Excellon drill file
+pos,EDA,,Electronics,pick-and-place / component position file
+net,EDA,,Electronics,netlist
+cir,EDA,,Electronics,netlist / SPICE circuit
+sp,EDA,,Electronics,SPICE netlist
+cdl,EDA,,Electronics,netlist (circuit description language)
+asc,EDA,LTspice,Electronics,LTspice simulation schematic
+schlib,EDA,Altium,Electronics,Altium schematic library
+pcblib,EDA,Altium,Electronics,Altium PCB library
+olb,EDA,OrCAD,Electronics,OrCAD library
+bxl,EDA,,Electronics,Ultra Librarian library
+m4v,OTHER,,,video
+mpg,OTHER,,,video
+mpeg,OTHER,,,video
+webm,OTHER,,,video
+flv,OTHER,,,video
+3gp,OTHER,,,video
+mts,OTHER,,,video
+f3z,ASSEMBLY,Fusion360,,archive of a multi-design assembly (the designs inside are not opened - one file)
+f2d,DRAWING,Fusion360,,Fusion drawing
+fsch,EDA,FusionElectronics,Electronics,Fusion Electronics schematic
+fbrd,EDA,FusionElectronics,Electronics,Fusion Electronics board
+flbr,EDA,FusionElectronics,Electronics,Fusion Electronics library
+jpe,IMG,,,
+heif,IMG,,,
+cr2,IMG,,,camera raw
+nef,IMG,,,camera raw
+dng,IMG,,,camera raw
+raw,IMG,,,camera raw
+mp3,OTHER,,,audio
+wav,OTHER,,,audio
+m4a,OTHER,,,audio
+aac,OTHER,,,audio
+flac,OTHER,,,audio
+ogg,OTHER,,,audio
+tgz,ARCHIVE,,,
+so,DATA,,,shared library

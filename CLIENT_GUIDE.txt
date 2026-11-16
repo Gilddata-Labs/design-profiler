@@ -1,0 +1,223 @@
+FOLDER PROFILER - STEP-BY-STEP GUIDE (no technical knowledge needed)
+=====================================================================
+
+WHAT THIS DOES
+It counts and measures the files in a folder (types, sizes, dates) and makes ONE small zip file
+with the numbers. It never copies, stores or sends your files or their contents - only information ABOUT them (see "WHAT IT RECORDS").
+Your files are never changed. Nothing about your files or the result is ever sent over the internet by the tool. The only internet use is the
+starter downloading the program itself from GitHub (see "WHERE THE PROGRAM COMES FROM" below) - and, only if you choose the optional
+Fusion 360 tab and sign in, the questions it asks Autodesk about your own hub.
+
+WHERE THE PROGRAM COMES FROM
+The package holds only a small starter (launcher.py) and, on Windows, the Python it needs. Each time you start the tool, the starter asks GitHub
+(github.com/data847/folder-profiler, public) which version is the latest, and downloads it (about 0.5 MB, into the folder "app" next to the
+starter) only if it is newer than the one already there. So the first start needs internet access to github.com and api.github.com; later starts
+use the copy in "app" if GitHub cannot be reached. It sends GitHub nothing but the request itself (as any web page does); no file names, no
+results, no information about your computer. To stay on one exact version, put its tag on the first line of a file named ref.txt next to the
+starter. Delete the folder "app" to start clean. Open launcher.py in Notepad to read exactly what it does. If your network blocks GitHub, the
+first start fails with a plain message: ask us for a full copy.
+
+WHAT IT RECORDS
+For every file at any folder depth: its type, size, modified date, a short format tag, and its file name and
+folder path. For assembly, drawing and STEP files it also reads out the NAMES of the other files they point to,
+so that parts can be grouped under their real assembly. Nothing else is read out of your files: no geometry, no
+text, no properties, and no file is ever copied or sent. THE ZIP THEREFORE CONTAINS YOUR FILE AND FOLDER NAMES -
+only send it if you are happy to share those.
+For AutoCAD drawings (.dwg, .dxf) it also reads how many sheets (layouts) the drawing has - only that number, never the layout names.
+There are no settings to choose: the tool always records all of this and always includes every sub-folder.
+(Expert command line only: --level 0|1|2 records less, --project-depth N sets which folder level counts as a project.)
+
+IF THE RUN STOPS - IT RESUMES
+Big folders take a long time. If the tool stops for any reason (crash, power cut, restart, Ctrl+C), start it again with the same
+settings and the same folder: it continues from the last saved point, not from the beginning. Progress is saved after every few
+thousand files in the "output" folder (a hidden ".resume" folder) and removed when the run finishes. To ignore it and start over,
+tick "Start from scratch" on the page (or use --fresh). If files were added, removed or replaced in between, the tool notices (it compares what it saved
+with what is on the disk), profiles the affected part again and says so in the log.
+A NEWER VERSION OF THE TOOL CARRIES ON TOO: if you download a new version while a run is unfinished, start it with the same folder and
+settings and it continues from where the older version stopped - nothing already read is read again. Run_info.csv in the result names every
+version that worked on the run and how many projects each profiled. (Only if a version changes how saved progress is stored does it say so and start over.)
+
+WHILE IT RUNS
+On the page, Pause and Stop buttons appear under the progress bar, with the time left. Pause waits at the end of the current batch of files and
+Resume continues; Stop ends the run and keeps everything finished (click Step 2 again with the same settings to carry on). Stop also works while
+files are being counted, but that count is then thrown away. The tool keeps the computer from going to sleep while it works. The page also says
+what is limiting the speed - the disk or network reading files, the listing of folders, the processor, memory or saving progress - and the
+same lines are in Run_log.csv. When it finishes, Reconciliation.csv and the line 'reconciliation' in Run_info.csv compare the profile with the
+count made before profiling started (files and bytes per project): OK, or exactly what differs.
+
+RUN STATISTICS (safe to share)
+Every run also produces run_stats_...zip (and a "Download run statistics" button on the page). It contains the time each step took,
+a sample of your computer's CPU, memory and reading speed every 5 seconds during the run, and a short description of the machine
+(Windows version, processor, memory, type of disk, whether antivirus real-time scanning is on). It contains no file names, folder
+names, computer name or user name. Send it to us if we ask how your machine performed.
+
+NOTHING IS HASHED
+The tool never computes fingerprints of your files and never reads a file in full (except the assembly, drawing and
+STEP files whose references are listed). Duplicate files are recognised by their size and modified date instead.
+All sub-folders are included, however deeply they are nested.
+
+COMPRESSED FILES (.zip, .rar, .7z, .tar ...)
+The tool does NOT open compressed files. Each one is counted as a single file, like any other.
+
+TWO STEPS
+Step 1 - QUICK COUNT (very fast, a few seconds to minutes): counts how many files of each type there are and how big they are,
+per project folder and overall. No file is opened. By default it also lists every file - its path inside the project, size and modified date -
+in a Paths folder of the zip (one list per file type), read from the folder listing only. To leave the file names out, untick "Step 1: also list every file's path, size and date by file type"
+in the page (command line: --no-paths); to hide the names but keep the lists, tick "Anonymise file and folder names". Nothing is ever sent anywhere.
+Step 2 - FULL PROFILE (the complete run, much longer): everything described in "WHAT IT RECORDS" above.
+In the browser page there is one button for each step. Run step 1 first if you want a fast overview, or send both zips.
+(Command line: add --quick for step 1; without it you get step 2.)
+
+FUSION 360 (AUTODESK CLOUD): STEPS, RESUME AND RATE LIMITS
+The Fusion 360 tab works in the same two steps as folders. Step 1 (quick count) lists the hub and counts items and bytes per project and file type, with no
+item or folder names; Step 2 (full profile) writes every item. Both use ONE listing: Step 1 keeps it, so Step 2 within a day needs no new calls to Autodesk.
+If the run stops, the computer restarts, or Autodesk limits the speed for too long, everything listed so far is saved: click the same button again and it
+lists only what is left (a newer version of the tool carries on from an older one's progress too). The tool is gentle by itself: when Autodesk says
+'slow down' all its requests pause together and then continue slower. Run_info.csv reports how often that happened and what it cost.
+Sign-in: Autodesk sends the browser back to http://localhost:PORT/callback after you approve. The page uses port 8765 only if no other program holds it
+(on IPv4 or IPv6); otherwise it takes the next free port (8766, 8767 ...) and shows the callback URL to register in your Autodesk app on the Fusion tab. If
+you see a 404 page after approving, another program (often a Docker container) is answering on that port: see the Fusion help page, 'Troubleshooting'.
+
+IF SOMETHING GOES WRONG
+Problems are written down instead of ignored. Inside the zip: Unreadable.csv (folders / files the tool was not allowed to read, with the reason),
+Read_Problems.csv (files that could be listed but not fully read, with the reason; only present when there were some), Setup_Warnings.csv
+(folders that could not even be listed; only present when there were some) and Run_log.csv (a timestamped diary of the run, warnings included).
+If the whole run fails, send the fail log or error_log.txt from the output folder (it keeps every failure, newest last; your name and paths are removed).
+
+NETWORK DRIVES AND WINDOWS FILE SERVERS
+You can measure a mapped drive (Z:\...) or a server path (\\server\share\...). Tips:
+  - Use an account that can read the folders. Folders the tool cannot read are listed in Unreadable.csv (inside the zip) so the owner can fix the
+    permissions and run again; nothing inside them is in the counts.
+  - Files that exist only in the cloud (Azure File Sync "tiered" files, OneDrive "online-only" files) are NOT opened, because opening them would
+    download them. They are still counted from the folder listing and shown as TIERED.
+  - A short network drop is handled automatically (the tool waits and tries again). If the connection stays down, run it again: it continues.
+  - For the fastest full profile, run it on the server itself, or on a computer on the same fast network.
+
+WHAT YOU NEED
+- A Windows computer (Mac: see the Mac section at the bottom).
+- The folder you want measured. Inside it, each sub-folder is counted as one project.
+- About 5-10 minutes. Large folders can take longer; just leave it running.
+
+
+WINDOWS - STEP BY STEP
+----------------------
+STEP 1. Unzip the tool.
+  - Find the file "folder-profiler-ui.zip" (probably in your Downloads folder).
+  - Right-click it, then click "Extract All...", then click "Extract".
+  - A normal folder opens. IMPORTANT: do not run anything from inside the zip window.
+    Always use the extracted folder.
+
+STEP 2. Start the tool.
+  - In the extracted folder, double-click the file named:   run-ui.bat
+  - If Windows shows a blue box "Windows protected your PC":
+        click "More info", then click "Run anyway".
+    (This appears because the tool is not from the Microsoft Store. It is safe to run;
+     you can open run-ui.bat and launcher.py in Notepad to read exactly what they do; the program itself is in the folder "app".)
+  - A black window opens with some text. LEAVE IT OPEN. It is the tool running.
+  - After a few seconds your web browser opens a page called "Folder Profiler".
+    If the browser does not open by itself, look in the black window for a line like
+        Folder Profiler UI: http://127.0.0.1:12345/
+    and type that address into your browser's address bar. This page is only on your own
+    computer. It is not on the internet.
+
+STEP 3. Choose what to measure. At the top of the page you see two options:
+  (a) "One parent folder": measures a folder and treats each folder inside it as a project.
+  (b) "Pick project folders": you tick the exact folders you want, one or many. You can open
+      other folders and keep ticking; your ticks are kept and shown in a list underneath.
+      Click the red x next to an entry to remove it. (Do not tick a folder together with
+      one of its own sub-folders; the tool will tell you.)
+  Then, in the list of folders:
+  - Click a folder name to open it. Click "Up" to go back.
+  - Option (a): keep going until the box at the top shows the folder you want measured
+    (the folder that CONTAINS your project folders). You can also type or paste its path.
+  - You can paste a folder's path (for example \\server\share\Project1 or D:\Projects\Project1) into the
+    box at the top and press Enter in either option. In option (b) then click "Add this folder".
+  - Option (b): click the little square next to each project folder to tick it. Click the
+    folder's NAME to open it and look inside.
+
+STEP 4. Run it.
+  - Click the "Start profiling" button.
+  - Text appears showing progress, such as "scanned 1,200 files". Wait until it says
+    "Done", with the number of folders and files. Do not close the black window yet.
+
+STEP 5. Save the result.
+  - Click the green "Download metrics zip" button.
+  - The file is saved to your Downloads folder, and a copy is also in the "output" folder
+    inside the tool folder. Its name looks like:  profile_YourFolder_20260101-120000.zip
+
+STEP 6. Send it to us.
+  - Email or upload that ONE zip file as we told you. You can double-click it first and
+    open the files inside (in Excel or Notepad) to see exactly what is in it.
+
+STEP 7. Close the tool.
+  - Close the browser page, then close the black window.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+- "The browser page does not open":  use the address shown in the black window (Step 2).
+- "The page says Not a folder" or cannot open a folder:  pick a different folder, or paste
+  the path again. Folders you do not have permission to open will be skipped and counted
+  as "unreadable".
+- "The black window closes straight away or shows an error":
+    1. Make sure you extracted the zip first (Step 1) and are not running it from inside the zip.
+    2. Right-click the black window text, copy it, or take a screenshot, and send it to us.
+- "Run" button does nothing / stuck:  wait a minute for large folders. If nothing changes after
+  10 minutes, close everything and start again from Step 2.
+- If a run fails, the page shows a red "Download fail log" button. Click it and send us that ONE file
+  (fail_log_....zip, also saved in the "output" folder). It holds the error and how the run went, with your
+  computer's paths and user name removed. Names of files or folders can still appear inside error
+  messages: open problem.txt in it with Notepad and look first if the names are sensitive.
+  If the page itself will not open, send output\error_log.txt instead.
+- Antivirus warning: the tool does not change any files. If your antivirus blocks it, ask your
+  IT team to allow the extracted folder, or contact us.
+
+
+MAC (needs Python 3 installed once)
+-----------------------------------
+1. Install Python from https://www.python.org/downloads/ (click the big yellow Download button
+   and open the installer). Skip if already installed.
+2. Double-click folder-profiler-ui.zip to unzip it (do not run it from inside the zip).
+3. Open the app "Terminal". Type:   cd   (then a space), drag the unzipped "folder-profiler-ui"
+   folder into the Terminal window, press Enter. (Or just double-click run-ui.command in that folder.)
+4. Type:   python3 launcher.py ui   and press Enter. The first time it downloads the program from
+   GitHub (needs internet); then your browser opens the Folder Profiler page.
+5. Continue from STEP 3 above (choose the folder, Start profiling, Download, send to us).
+   To stop the tool, go back to Terminal and press Control + C.
+
+
+OPTIONAL - DOCKER (only if your IT team already uses Docker)
+------------------------------------------------------------
+Open a terminal in the tool folder. Copy ".env.example" to ".env" and set PROFILE_DIR to the
+folder to measure. Run:  python3 launcher.py prepare   (fetches the program from GitHub; on Windows use
+python\python.exe launcher.py prepare), then:  docker compose up --build   then open http://localhost:8765 and
+continue from STEP 3. The zip is also saved in the "output" folder.
+
+
+OPTIONAL - HIDE NAMES IN THE RESULT
+-----------------------------------
+Tick "Anonymise file and folder names in the result" before Step 1 or Step 2 if the names of your
+projects, folders and files must not leave your computer.
+- Only the RESULT is changed. Your files and folders are never renamed or touched.
+- Project, folder and file names in the result become codes (for example P-a1b2-3f9c0e).
+  File types (.dwg, .pdf ...) are kept. The same name always gets the same code - in Step 1 and
+  in Step 2, and in every later run on this computer - so the two results line up by code.
+  The codes come from a secret key made the first time you tick the option and kept on this computer
+  (folder ".folder-profiler" in your user folder; in Docker the output folder, file ".name_key").
+  Never send that file. If you delete it, the next run starts new, unrelated codes. The name map
+  zip holds a copy (Name_Key.txt) in case you move to another computer. Run_info.csv has a line
+  "name_codes" that says whether this run's codes are kept ("same on every run") or only for this run.
+- Leave "Also give me the name map" ticked: a second file, "name_map_....zip", is made, with its own
+  download button. It lists each real name and its code, so the codes can be turned back into the
+  real names. KEEP IT PRIVATE. Send us only the profile zip, never the name map.
+  (If you untick it, no map is made and the codes can never be decoded.)
+- It does not make the run noticeably slower.
+
+
+COMPUTER REQUIREMENTS
+---------------------
+Windows 10 / 11 or Server 2019+, 4 GB of free memory is enough (8 GB or more recommended), any number of
+CPU cores (4 is fine). The tool is limited by the speed of the disk or file server, not by the computer:
+it opens only the files it must read and keeps its memory use under a limit it works out from your RAM.
+Close other heavy programs while it runs. If the computer feels slow, close this tool and start it again;
+a stopped run continues where it stopped.
