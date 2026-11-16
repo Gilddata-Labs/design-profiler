@@ -1,0 +1,18 @@
+format,extensions,what is read,status,evidence
+SolidWorks,sldprt sldasm slddrw,content tag; references inside assemblies and drawings,verified (parts and assemblies); drawings not seen,37 real SolidWorks 2022 files: 6 of 6 assemblies read; 30 of 31 parts linked
+Solid Edge,par psm asm pwd dft,content tag; references; compliance markings in properties,verified (drafts); parts and assemblies partial,3 real drafts list the models they document; tags verified on 7 real files upstream
+Inventor,ipt iam idw ipn,content tag; references; compliance markings in properties,partial: parts verified; assemblies and drawings not seen,6 real parts tagged correctly
+Revit,rvt rfa rte,content tag; version year; workshared; linked file names; compliance markings,partial: written from published stream descriptions; no real file tested,synthetic compound files only
+AutoCAD DWG,dwg,version tag; sheet (layout) count with confidence; truncation check,verified R2000 to R2018 except R2007; R2007 not counted; xrefs not read,82 of 82 counts match ezdxf; every DWG cut 5% to 99% flagged; none of 82 intact files flagged
+AutoCAD DXF,dxf dxfb,version tag; sheet count with confidence; xref names; compliance markings,verified (text DXF); binary DXF mapped but not counted,DXF twins of the DWG set; planted xref and markings found
+STEP,stp step,AP version; authoring tool; product structure (assembly pairs); compliance markings,verified,173 of 173 assembly pairs vs an independent parser; tools checked against headers
+IFC,ifc,schema version; authoring application; compliance markings,verified,18 of 18 IFC files tagged with the right application
+IGES,igs iges,authoring tool from the global section; compliance markings,partial,2 real files
+CATIA V5,catpart catproduct catdrawing,content tag; references by text search only,scan only: weaker evidence; no real file tested,synthetic files only
+Creo / Pro/ENGINEER,prt asm drw,content tag; references by text search only,scan only: weaker evidence; no real file tested,synthetic files only
+NX,prt,references by text search only,scan only: weaker evidence; no real file tested,synthetic files only
+KiCad,kicad_pcb kicad_sch kicad_mod kicad_sym kicad_pro,content tag; role (schematic / layout / library / project); compliance markings,verified,709 real KiCad demo files; Electronics tab filled
+Gerber / drill,gbr gtl drl xln gbrjob,role by name,verified,22 real Gerber files
+FreeCAD,fcstd,class by name,partial: no content tag,160 real files classified as parts
+Fusion 360 (cloud),Fusion hubs,metadata through the Autodesk API,not tested: needs an Autodesk account,none
+Markings in DWG and SolidWorks,dwg sldprt sldasm slddrw,not read: their text is compressed,not covered,none

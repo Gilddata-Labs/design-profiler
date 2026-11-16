@@ -10,6 +10,7 @@ GildData (internal edition only):
     gilddesign compile ZIP|FOLDER ...    zips -> workbook (Project Compiled, breakdowns, domain tabs, Review)
     gilddesign compare A.zip B.zip       counts per file type side by side (ours vs upstream, Step 1 vs Step 2, two runs)
     gilddesign verify  ZIP ...           manifest present and no member changed after the run
+    gilddesign catalogue ZIP|FOLDER ...  many sellers -> design catalogue, QC flags, seller answers merge, GildDesign Score cards
 
 Names are CODED by default (project, folder and file names become codes; extensions kept; the seller keeps the name map). Real names
 only with --real-names, which is the seller's explicit choice and is written into manifest.json.
@@ -27,7 +28,7 @@ sys.path.insert(0, HERE)
 import gd_version  # noqa: E402
 
 COMPILER = os.path.join(HERE, "claude-skill", "profile-compile", "scripts", "compile_profiles.py")
-INTERNAL_ONLY = ("compile", "compare", "verify")
+INTERNAL_ONLY = ("compile", "compare", "verify", "catalogue")
 
 
 def _default_out():
@@ -100,6 +101,8 @@ def cmd_extract(a):
     argv += [] if not a.project_depth else ["--project-depth", str(a.project_depth)]
     argv += ["--anonymize-names"] if coded else []
     argv += ["--fresh"] if a.fresh else []
+    if a.fingerprint:
+        os.environ["PROFILER_DESIGN_FP"] = "1"
     argv += [] if not a.workers else ["--workers", str(a.workers)]
     return fp.main(argv)
 
@@ -160,6 +163,17 @@ def cmd_compile(a):
     return 0
 
 
+def cmd_catalogue(a):
+    import gd_catalogue
+    zips = [z for z in _expand(a.inputs) if os.path.basename(z).startswith("profile_")]
+    print("Manifest check:")
+    cmd_verify(argparse.Namespace(zips=zips))
+    print()
+    gd_catalogue.build(zips, a.out or os.path.join(_default_out(), "catalogue"), sellers_csv=a.sellers,
+                       answers_path=a.supplier_answers, cards=not a.no_cards)
+    return 0
+
+
 def cmd_compare(a):
     import gd_compare
     identical, _rows, _notes = gd_compare.compare(a.a, a.b, out_dir=a.out or _default_out())
@@ -195,6 +209,8 @@ def build_parser():
     common(p)
     p.add_argument("--level", type=int, choices=[0, 1, 2], default=2, help="0 metrics only, 1 + names and paths, 2 (default) + references and sheets")
     p.add_argument("--fresh", action="store_true", help="ignore saved progress and start again")
+    p.add_argument("--fingerprint", action="store_true",
+                   help="also write a keyed partial fingerprint of each design file (size + first and last 64 KB), so GildData can find copies sold twice")
     p.set_defaults(fn=cmd_extract)
 
     p = sub.add_parser("cloud", help="profile an Autodesk Fusion hub (metadata only)")
@@ -210,6 +226,14 @@ def build_parser():
         p = sub.add_parser("compile", help="GildData: zips -> workbook")
         p.add_argument("inputs", nargs="+", help="zips or folders of zips; compiler options go after --  (e.g. -- --out DIR --unique)")
         p.set_defaults(fn=cmd_compile, rest=[])
+
+        p = sub.add_parser("catalogue", help="GildData: zips of many sellers -> design catalogue, QC flags, GildDesign Score cards")
+        p.add_argument("inputs", nargs="+", help="profile zips or folders of them")
+        p.add_argument("--out", help="output folder (default ./output/catalogue)")
+        p.add_argument("--sellers", help="CSV with columns zip,seller (default: the label in each zip's file name)")
+        p.add_argument("--supplier-answers", help="seller answers, CSV or XLSX: Project Name (+ Seller) and one column per field")
+        p.add_argument("--no-cards", action="store_true", help="do not write the HTML score cards")
+        p.set_defaults(fn=cmd_catalogue)
 
         p = sub.add_parser("compare", help="GildData: two zips side by side")
         p.add_argument("a")

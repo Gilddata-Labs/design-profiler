@@ -30,6 +30,10 @@ WHAT TO SEND US
    KEEP PRIVATE: name_map_<folder>_<date>.zip turns the codes back into your real names. Never send it unless you want us to see
    the real names.
 
+FINGERPRINTS (only if GildData asks you to)
+   Add --fingerprint to the extract command. For each design file it adds a short code computed from its size and its first and last
+   64 KB, so GildData can tell when the same file is offered twice. The code cannot be turned back into the file.
+
 NAMES
    By default every project, folder and file name in the result is a code (extensions are kept). The same name gets the same code
    in Step 1, Step 2 and later runs on this computer. Only if you agree to share real names: untick "Anonymise" on the page, or add

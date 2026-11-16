@@ -17,6 +17,22 @@ PRD: "PRD: GildData Design Data Profiler v1" (Claude Doc). Decisions live in Own
 | `compile ZIPS -- [compiler options]` | internal | Zips to the compiled workbook (checks every manifest first) |
 | `compare A.zip B.zip` | internal | File counts and bytes per type side by side; exit 0 when identical |
 | `verify ZIPS` | internal | manifest.json present and no member changed after the run |
+| `catalogue ZIPS --out DIR [--sellers CSV] [--supplier-answers FILE]` | internal | Many sellers: design catalogue, QC flags, seller answers merge, duplicate groups across sellers, GildDesign Score cards |
+
+`extract --fingerprint` (off by default, PRD open decision 2) adds keyed partial fingerprints of design files so copies offered by two sellers are found.
+
+## Milestones 2 and 3 (v0.3.0)
+
+- **Readers (`gd_signals.py`, level 2):** compliance marking counts (ITAR, EAR, EXPORT, CONFIDENTIAL, PROPRIETARY) from DXF, STEP, IFC, IGES,
+  KiCad, Solid Edge, Inventor and Revit files (never the text; DWG and SolidWorks keep text compressed and are not covered); AutoCAD xref names from
+  DXF; Revit version, workshared flag and linked file names (written from the published stream descriptions, not yet checked on real Revit files);
+  opt in keyed fingerprints. Files.csv gains `signals` and `fp`; Links.csv gains kinds `xref` and `revit_link`. Saved progress format 2.
+- **Catalogue (`gd_catalogue.py`):** each seller zip compiled alone, then `design_catalogue.xlsx` (Catalogue, Sellers, Scores, QC Flags, Conflicts,
+  Missing Fields, Duplicate Groups, Format Status, Method Notes), CSVs under `qc/`, and one HTML GildDesign Score card per dataset in `cards/`.
+  All thresholds and weights are starting values in `gd_catalogue.SETTINGS`.
+- **Format status:** `claude-skill/profile-compile/scripts/mapping/format_status.csv` says per format what is read and how well it is verified.
+- **CI:** `.github/workflows/ci.yml` runs every test on Windows, macOS and Linux (Python 3.9 and 3.12), builds and runs the Docker image sealed, and
+  builds the release zips. It runs as soon as the repository is pushed to GitHub.
 
 ## What our layer changes in the engine
 
@@ -37,7 +53,7 @@ project's domain; KiCad library / project files, BREP, glTF, binary DXF mapped. 
 
 ## Tests
 
-`python3 tests/test_gd.py` (our layer; set `GD_UPSTREAM=/path/to/data847/folder-profiler` to also prove identical counts against the
+`python3 tests/test_gd.py`, `tests/test_gd_fixes.py`, `tests/test_gd_m2.py`, `tests/test_gd_catalogue.py` (our layer; set `GD_UPSTREAM=/path/to/data847/folder-profiler` to also prove identical counts against the
 upstream engine) and every `tests/test_*.py` of the engine. `test_structure.py` has one check that fails only when run as root (root can
 read a locked folder).
 

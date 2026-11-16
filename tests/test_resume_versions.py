@@ -49,9 +49,9 @@ with tempfile.TemporaryDirectory() as t:
     fp._TEST_HOOK = boom
     try: run(src, out2)
     except Boom: pass
-    fp._TEST_HOOK = None; fp.VERSION = "1.8"; fp.STATE_FORMAT = 2; CALLS[0] = 0
+    fp._TEST_HOOK = None; fp.VERSION = "1.8"; _sf = fp.STATE_FORMAT; fp.STATE_FORMAT = _sf + 1; CALLS[0] = 0   # GildData: "another" format = current + 1 (current is 2 since v0.3.0)
     run(src, out2); check("progress saved in another state format is not trusted: everything is read again", CALLS[0], total)
-    fp.STATE_FORMAT = 1
+    fp.STATE_FORMAT = _sf
     out3 = os.path.join(t, "o3"); fp.VERSION = "1.7"; fp._TEST_HOOK = boom
     try: run(src, out3)
     except Boom: pass
@@ -70,8 +70,11 @@ with tempfile.TemporaryDirectory() as t:
     for u in man["units"].values(): u.pop("vs", None)
     json.dump(man, open(mp, "w")); legacy = "legacy0000000000"; os.rename(os.path.join(rdir, old_id), os.path.join(rdir, legacy))
     CALLS[0] = 0; z = run(src, out4); info = info_of(z)
-    check("progress saved by the real 1.7 (old identity) is picked up and carried on", (CALLS[0] < total, rows_of(z) == base_rows), (True, True))
-    check("its versions are recovered from the old identity", info["versions_used"], "1.7 -> 1.8")
-    check("projects it had started are credited to 1.7", info["projects_by_version"].startswith("1.7"), True)
+    if fp.STATE_FORMAT == 1:
+        check("progress saved by the real 1.7 (old identity) is picked up and carried on", (CALLS[0] < total, rows_of(z) == base_rows), (True, True))
+        check("its versions are recovered from the old identity", info["versions_used"], "1.7 -> 1.8")
+        check("projects it had started are credited to 1.7", info["projects_by_version"].startswith("1.7"), True)
+    else:   # GildData v0.3.0: saved rows gained the signals / fp columns (STATE_FORMAT 2); format 1 progress lacks them, so it is redone
+        check("old identity progress (format 1) is NOT reused once rows changed meaning: everything read again, same result", (CALLS[0], rows_of(z) == base_rows), (total, True))
     fp.VERSION = real
 print("\nFAILED" if any(bad) else "\nALL OK"); sys.exit(1 if any(bad) else 0)

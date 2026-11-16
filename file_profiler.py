@@ -78,12 +78,16 @@ import diag
 from sysmetrics import now_utc
 
 VERSION = "1.9"
-STATE_FORMAT = 1             # layout of the saved progress (.resume): raise it ONLY when saved rows / fingerprints change meaning. A new VERSION of the
+STATE_FORMAT = 2             # layout of the saved progress (.resume): raise it ONLY when saved rows / fingerprints change meaning. A new VERSION of the
                              # tool carries on from the saved progress of an older one as long as this number and the run's settings are the same.
 try:
     import name_anon
 except ImportError:          # optional feature: the profiler works without it, the option is then refused
     name_anon = None
+try:
+    import gd_signals        # GildData Milestone 2: compliance markings, DXF xrefs, Revit facts, opt in fingerprints (level 2)
+except ImportError:
+    gd_signals = None
 try:
     import gd_manifest       # GildData: manifest.json in every zip (tool, version, level, names coded or real, member checksums)
 except ImportError:
@@ -99,6 +103,10 @@ def _file_label(label, nm):
         return nm.peek_project(label) or "dataset"      # computed, not recorded: the name map lists projects only
     except Exception:  # noqa: BLE001
         return "dataset"
+
+
+_NO_EXTRA = object()                 # GildData: "markings / fingerprint not computed during the main read" (thread local _tl.ex)
+_tl = threading.local()
 
 
 def _gd_stamp(zip_path, kind, tier, nm, project_depth, log=print):
@@ -1350,7 +1358,7 @@ def find_saved_state(out_dir, cfg):
 
 def profile(root, out_dir, log=print, label=None, folders=None, workers=None, progress=None,
             anonymize_assembly_names=None, tier=None, project_depth=None,
-            resume=True, metrics_interval=None, system_info=True, chunk_files=None, anonymize_names=None, name_map=True):
+            resume=True, metrics_interval=None, system_info=True, chunk_files=None, anonymize_names=None, name_map=True, design_fp=None):
     """Profile a folder tree. Streaming and resumable: every project is processed in chunks that are saved to
     <out_dir>/.resume/<run id>/ as they finish; a run that stops (crash, power cut, Ctrl+C) continues from the last saved chunk when
     started again with the same settings. The state is deleted when the run completes. Nothing is ever hashed except folder
@@ -1369,6 +1377,12 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
     if tier == 2 and cad_links is None:
         raise SystemExit("detail level 2 needs cad_links.py next to file_profiler.py")
     project_depth = max(1, env_int("PROFILER_PROJECT_DEPTH", 1) if project_depth is None else int(project_depth))
+    if design_fp is None:                                # GildData: keyed partial fingerprints, OFF unless asked for (PRD open decision 2)
+        design_fp = os.environ.get("PROFILER_DESIGN_FP", "").lower() in ("1", "true", "yes")
+    fp_key = None
+    if design_fp and tier >= 2 and gd_signals is not None:
+        import gd_version
+        fp_key = gd_version.FINGERPRINT_KEY
     nm = _name_map(anonymize_names, out_dir)
     if tier >= 1 or nm:                     # with name anonymisation the assembly names follow the same map as every other name
         anonymize_assembly_names = False
@@ -1394,7 +1408,7 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
     # ---- run identity, checkpoint state
     cfg = json.dumps({"fmt": STATE_FORMAT, "nohead": bool(no_head), "units": [[u[0], u[1], u[2]] for u in units], "tier": tier, "depth": project_depth,
                       "anon": bool(anonymize_assembly_names), "anon_names": bool(nm),
-                      "chunk": chunk_files}, sort_keys=True)
+                      "chunk": chunk_files, "dfp": bool(fp_key)}, sort_keys=True)
     run_id = f"{zlib.crc32(cfg.encode()):08x}{zlib.adler32(cfg.encode()):08x}"
     state_dir = os.path.join(out_dir, ".resume", run_id)
     if resume and not os.path.exists(os.path.join(state_dir, "manifest.json")):
@@ -1614,7 +1628,7 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
 
         def columns():
             return (["project", "file_no", "ext", "size_bytes", "modified_utc", "depth", "header_signature", "dir_id", "asm_name"]
-                    + (["rel_path"] if tier >= 1 else []) + (["sheets", "sheets_conf", "sheets_status"] if tier >= 2 else []))
+                    + (["rel_path"] if tier >= 1 else []) + (["sheets", "sheets_conf", "sheets_status", "signals", "fp"] if tier >= 2 else []))
 
         def sheet_cols(sh):
             """Row cells for the sheet count: '' = not attempted (not a drawing / level < 2); confidence 0 with no count = attempted, failed."""
@@ -1696,8 +1710,40 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
 
                 def work(e, allow=True):
                     diag.take()                                # forget the note of the previous file read by this thread
+                    _tl.ex = _NO_EXTRA
                     r = work_core(e, allow)
-                    return r + (diag.take(),)                  # why the file was not fully read, '' when it was
+                    ex = _tl.ex if _tl.ex is not _NO_EXTRA else work_extra(e, r[0])
+                    return r + (ex, diag.take())               # why the file was not fully read, '' when it was
+
+                def extra_in_open(fh, ext, size):
+                    """GildData: markings / xrefs / fingerprint from a file ALREADY open for its tag (drawings, assemblies, STEP): no extra open."""
+                    if tier < 2 or gd_signals is None:
+                        return None
+                    want_sig = ext in gd_signals.SIGNAL_EXTS
+                    want_fp = bool(fp_key) and EXT_CLASSES.get(ext) in gd_signals.FP_CLASSES
+                    if not (want_sig or want_fp) or size <= 0:
+                        return None
+                    with act.timer("signal_scan"):
+                        return gd_signals.scan(fh, ext, size, fp_key if want_fp else None, want_signals=want_sig)
+
+                def work_extra(e, sig):
+                    """GildData Milestone 2 (level 2): markings, xrefs, Revit facts, fingerprint. A second, bounded read of design files only."""
+                    if tier < 2 or gd_signals is None or sig in ("TIERED", "UNREADABLE", "EMPTY") or "UNREADABLE" in sig:
+                        return None
+                    path, name, ext, size, mtime, dir_id, depth, asm, relpath, nn, tiered = e
+                    want_sig = ext in gd_signals.SIGNAL_EXTS
+                    want_fp = bool(fp_key) and EXT_CLASSES.get(ext) in gd_signals.FP_CLASSES
+                    if not (want_sig or want_fp) or size <= 0:
+                        return None
+                    try:
+                        with act.timer("signal_scan"):
+                            def go():
+                                with gate.hold(min(size, gd_signals.MAX_OLE_BYTES) * MEM_FACTOR), open(path, "rb") as fh:
+                                    return gd_signals.scan(fh, ext, size, fp_key if want_fp else None, want_signals=want_sig)
+                            return retry(go, C)
+                    except Exception as exc:  # noqa: BLE001
+                        diag.note("signals", reason_of(exc) if isinstance(exc, OSError) else type(exc).__name__)
+                        return None
 
                 def work_core(e, allow=True):
                     path, name, ext, size, mtime, dir_id, depth, asm, relpath, nn, tiered = e
@@ -1709,7 +1755,8 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
                     if tier >= 2 and ext in SHEET_EXTS and dwg_sheets is not None and size > 0:
                         ck = (ext, name.lower(), size, mtime)          # an exact copy (same name, size, date: the compiler's own duplicate rule) was already read
                         hit = copies.get(ck)
-                        if hit is not None:
+                        if hit is not None and not fp_key:      # with fingerprints on, every copy is read: the fingerprint is what proves it IS a copy
+                            _tl.ex = hit[2]
                             return hit[0], None, False, dict(hit[1], reused=True)
                         def read_sheets():                     # ONE open: format tag and sheet count from the same read
                             with gate.hold(size * MEM_FACTOR), open(path, "rb") as fh:
@@ -1718,14 +1765,20 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
                                 fh.seek(0)
                                 with act.timer("sheet_count"):
                                     known = sig[4:10].encode() if ext == "dwg" and sig.startswith("DWG:") else None      # version already read for the tag
-                                    return sig, dwg_sheets.count_sheets_file(fh, ext, size, head=known)
+                                    sh_ = dwg_sheets.count_sheets_file(fh, ext, size, head=known)
+                                try:
+                                    _tl.ex = extra_in_open(fh, ext, size)
+                                except Exception as exc:  # noqa: BLE001
+                                    diag.note("signals", type(exc).__name__)
+                                    _tl.ex = None
+                                return sig, sh_
                         try:
                             sig, sh = retry(read_sheets, C)
                         except OSError as exc:
                             diag.note("header", reason_of(exc))
                             return "UNREADABLE", None, False, None
                         if len(copies) < 500_000:
-                            copies[ck] = (sig, sh)
+                            copies[ck] = (sig, sh, _tl.ex if _tl.ex is not _NO_EXTRA else None)
                         return sig, None, False, sh
                     if tier >= 2 and ext in LINK_READ_EXTS and cad_links is not None and size > 0:
                         def read_refs():                       # ONE open: the format tag and the references come from the same read
@@ -1734,13 +1787,34 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
                                     sig = signature_stream(fh, ext, size)
                                 fh.seek(0)
                                 with act.timer("reference_read"):
-                                    return sig, cad_links.read_links_file(fh, ext, name, size)
+                                    refs_ = cad_links.read_links_file(fh, ext, name, size)
+                                try:
+                                    _tl.ex = extra_in_open(fh, ext, size)
+                                except Exception as exc:  # noqa: BLE001
+                                    diag.note("signals", type(exc).__name__)
+                                    _tl.ex = None
+                                return sig, refs_
                         try:
                             sig, res = retry(read_refs, C)
                         except OSError as exc:
                             diag.note("header", reason_of(exc))
                             return "UNREADABLE", None, True, None
                         return sig, res, True, None
+                    if tier >= 2 and gd_signals is not None and size > 0 and (ext in gd_signals.SIGNAL_EXTS or (fp_key and EXT_CLASSES.get(ext) in gd_signals.FP_CLASSES)):
+                        def read_tag_and_extra():              # GildData: ONE open for the tag and the markings / fingerprint (a second open is a network round trip)
+                            with gate.hold(min(size, gd_signals.MAX_OLE_BYTES) * MEM_FACTOR), open(path, "rb") as fh:
+                                with act.timer("format_tag_read"):
+                                    sig_ = signature_stream(fh, ext, size)
+                                try:
+                                    _tl.ex = extra_in_open(fh, ext, size)
+                                except Exception as exc:  # noqa: BLE001
+                                    diag.note("signals", type(exc).__name__)
+                                    _tl.ex = None
+                                return sig_
+                        try:
+                            return retry(read_tag_and_extra, C), None, False, None
+                        except OSError:
+                            _tl.ex = _NO_EXTRA                 # fall back to the engine's own tag read (it reports the error its way)
                     with act.timer("format_tag_read"):
                         sig = signature(path, ext, size, C)
                     return sig, None, False, None
@@ -1778,7 +1852,7 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
                     if not fut.done():                         # the main thread is held up by the readers: that wait is what "limited by read speed" means
                         with act.timer("wait_for_reads"):
                             fut.result()
-                    sig, res, was_link, sh, why = fut.result()
+                    sig, res, was_link, sh, ex, why = fut.result()
                     path, name, ext, size, mtime, dir_id, depth, asm, relpath, nn, tiered = e
                     if sig == "NOTAG":
                         C["head_skipped"] += 1
@@ -1797,7 +1871,16 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
                             C["sheets_reused"] += 1
                         C["sheets_counted" if sh["sheets"] is not None else "sheets_not_counted"] += 1
                         C["sheet_status:" + sh["code"]] += 1
-                    rows.append([proj, nn, ext, size, mtime, depth, sig, dir_id, asm] + ([relpath] if tier >= 1 else []) + sheet_cols(sh if ext in SHEET_EXTS else None))
+                    rows.append([proj, nn, ext, size, mtime, depth, sig, dir_id, asm] + ([relpath] if tier >= 1 else []) + sheet_cols(sh if ext in SHEET_EXTS else None)
+                                + ([(ex or {}).get("signals", ""), (ex or {}).get("fp", "")] if tier >= 2 else []))
+                    if ex:
+                        if ex["signals"]:
+                            C["files_with_signals"] += 1
+                            for k in gd_signals.parse(ex["signals"]):
+                                C["signal:" + k] += 1
+                        if ex["fp"]:
+                            C["fingerprints"] += 1
+                        lrows += [[proj, nn, ext, "xref", "", c] for c in ex["xrefs"]] + [[proj, nn, ext, "revit_link", "", c] for c in ex["links"]]
                     if was_link:
                         if res is None:
                             C["link_unreadable"] += 1
@@ -2115,7 +2198,8 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
         info = [["tool_version", VERSION], ["run_utc", now_utc()], ["os", platform.platform()], ["python", platform.python_version()],
                 ["folder_name", nm.root(label) if nm else label], ["mode", "docker" if os.environ.get("PROFILER_IN_DOCKER") else "native"],
                 ["projects", len(units)], ["workers", workers], ["files", nfiles_out], ["total_bytes", bytes_out],
-                ["hashing", "none"], ["assembly_names", "anonymized" if (anonymize_assembly_names or nm) else "real"],
+                ["hashing", "keyed partial fingerprint of design files (size + first and last 64 KB)" if fp_key else "none"], ["assembly_names", "anonymized" if (anonymize_assembly_names or nm) else "real"],
+                ["files_with_signals", C["files_with_signals"]], ["fingerprints", C["fingerprints"]]] + [[k.replace("signal:", "files_marked_"), v] for k, v in sorted(C.items()) if k.startswith("signal:")] + [
                 ["names_anonymized", "yes" if nm else "no"], ["name_codes", name_codes(nm)],
                 ["detail_level", tier], ["project_depth", project_depth],
                 ["header_reads_skipped", C["head_skipped"]], ["header_reads_sampled", C["head_sampled"]],
@@ -2197,6 +2281,10 @@ def what_is(tier, anonymized, names_anon=False):
                 "other CAD files they reference (or, for STEP, the product-structure names). Nothing else was copied from inside the\r\n"
                 "files - no geometry, no text, no properties. For AutoCAD drawings (.dwg/.dxf) the number of sheets (layouts) is\r\n"
                 "counted (columns sheets, sheets_conf of Files.csv); the layout names are not kept.\r\n"
+                "Column signals of Files.csv holds only COUNTS from a fixed list (ITAR, EAR, EXPORT, CONFIDENTIAL, PROPRIETARY markings; XREFS;\r\n"
+                "REVIT_VERSION, REVIT_WORKSHARED): never the text itself. Links.csv kinds xref / revit_link are the NAMES of drawings and files that\r\n"
+                "AutoCAD drawings and Revit models link to (no folders). Column fp is empty unless the run was started with --fingerprint: then it is\r\n"
+                "a keyed fingerprint of the size and the first and last 64 KB of each design file, used only to find copies of the same file.\r\n"
                 "Unreadable.csv lists the folders and files that could not be read (so their access can be fixed); files that exist only in the cloud\r\n"
                 "(tiered / online-only) are listed but never opened.\r\n")
     if names_anon:

@@ -17,7 +17,7 @@ sys.path.insert(0, ROOT)
 import gd_version  # noqa: E402
 
 SUPPLIER = [
-    "gilddesign.py", "gd_version.py", "gd_manifest.py", "gd_check.py",
+    "gilddesign.py", "gd_version.py", "gd_manifest.py", "gd_check.py", "gd_signals.py",
     "file_profiler.py", "cad_links.py", "dwg_sheets.py", "name_anon.py", "sysmetrics.py", "diag.py", "ui.py",
     "fusion_cloud_profiler.py", "ext_classes.csv", "UPSTREAM_COMMIT",
     "run.bat", "run.command", "run-ui.bat", "run-ui.command", "run-docker.bat", "run-docker.sh",

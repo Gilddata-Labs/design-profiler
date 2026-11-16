@@ -112,7 +112,11 @@ try:
         os.makedirs(os.path.dirname(p), exist_ok=True)
         open(p, "w").write("(kicad_pcb (version 20240108))\n" if n.endswith("pcb") else "(x)\n")
     os.makedirs(os.path.join(src, "Loop"), exist_ok=True)
-    os.symlink(os.path.join(src, "Loop", "missing_target"), os.path.join(src, "Loop", "dangling.sldprt"))
+    try:                                     # Windows runners without the symlink privilege: the dangling link check is skipped
+        os.symlink(os.path.join(src, "Loop", "missing_target"), os.path.join(src, "Loop", "dangling.sldprt"))
+        has_link = True
+    except (OSError, NotImplementedError):
+        has_link = False
     open(os.path.join(src, "Loop", "ok.sldprt"), "wb").write(b"x")
     out = os.path.join(t, "out")
     z, *_ = fp.profile(src, out, log=lambda *a: None, anonymize_names=True)
@@ -120,7 +124,10 @@ try:
     zr, *_ = fp.profile(src, os.path.join(t, "out_real"), log=lambda *a: None)
     with zipfile.ZipFile(zr) as zf:
         unread = zf.read("Unreadable.csv").decode("utf-8-sig").strip().splitlines()[1:]
-    check("a dangling link is listed once in Unreadable.csv", len(unread), 1)
+    if has_link:
+        check("a dangling link is listed once in Unreadable.csv", len(unread), 1)
+    else:
+        print("skip dangling link check (no symlink privilege here)")
     import compile_profiles as cp
     runs = cp.load_profiles([zr])
     ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
