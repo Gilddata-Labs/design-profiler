@@ -3,11 +3,12 @@ on to exactly an uninterrupted run's output; Pause waits at a chunk boundary and
 off in Docker and when switched off; the page's control endpoint and time-left estimate work."""
 import csv, io, json, os, sys, tempfile, threading, time, urllib.request, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp, sysmetrics
 bad = []
 def check(l, g, w):
     ok = g == w; print(("ok   " if ok else "FAIL ") + f"{l}: {g}" + ("" if ok else f" (wanted {w})")); bad.append(not ok)
-def rd(z, n): return list(csv.DictReader(io.StringIO(zipfile.ZipFile(z).read(n).decode("utf-8-sig"))))
+def rd(z, n): return list(csv.DictReader(io.StringIO(zopen(z).read(n).decode("utf-8-sig"))))
 def rows_of(z): return [{k: v for k, v in r.items() if k != "dir_id"} for r in rd(z, "Files.csv")]
 CALLS = [0]; _sig = fp.signature
 def counting(*a, **k): CALLS[0] += 1; return _sig(*a, **k)

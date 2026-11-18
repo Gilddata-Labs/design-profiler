@@ -3,6 +3,8 @@ Windows device-name extensions survive; anonymisation hides names; the switch tu
 import os as _os, tempfile as _tf; _os.environ["PROFILER_NAME_KEY_FILE"] = _os.path.join(_tf.mkdtemp(), "name_key")   # tests never touch the real key in ~/.folder-profiler
 import csv, io, os, subprocess, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
+Q = "'" if os.name == "nt" else '"'   # a quote in a file name: Windows forbids the double one
 import file_profiler as fp, name_anon
 bad = []
 def check(l, g, w):
@@ -10,7 +12,7 @@ def check(l, g, w):
 def rd(z, n): return list(csv.DictReader(io.StringIO(z.read(n).decode("utf-8-sig"))))
 with tempfile.TemporaryDirectory() as t:
     root = os.path.join(t, "ZQXRoot"); out = os.path.join(t, "o")
-    names = [("ZQXAlpha/ZQXSub One/plan, final.dwg", 30), ("ZQXAlpha/ZQXSub One/say \"hi\".pdf", 5), ("ZQXAlpha/notes", 7), ("ZQXAlpha/ünïcode näme.DWG", 11),
+    names = [("ZQXAlpha/ZQXSub One/plan, final.dwg", 30), ("ZQXAlpha/ZQXSub One/say " + Q + "hi" + Q + ".pdf", 5), ("ZQXAlpha/notes", 7), ("ZQXAlpha/ünïcode näme.DWG", 11),
              ("ZQXBeta/data.con", 3), ("ZQXBeta/x.nul", 4), ("ZQXBeta/y.COM1", 6), ("ZQXBeta/deep/er/still/a.txt", 2), ("ZQXBeta/Thumbs.db", 9), ("ZQXBeta/empty.txt", 0),
              ("ZQXBeta/" + "q" * 60 + ".averyveryveryverylongextensionnamethatgoesonandon", 8), ("ZQXBeta/part.prt.7", 12)]
     mt = {}
@@ -18,7 +20,8 @@ with tempfile.TemporaryDirectory() as t:
         p = os.path.join(root, *rel.split("/")); os.makedirs(os.path.dirname(p), exist_ok=True); open(p, "wb").write(b"x" * size)
         os.utime(p, (1_700_000_000 + i * 997, 1_700_000_000 + i * 997)); mt[rel] = 1_700_000_000 + i * 997
     os.makedirs(os.path.join(root, "ZQXAlpha", "empty folder"))
-    z = zipfile.ZipFile(fp.quick_scan(root, out, log=lambda *_: None, list_paths=True)[0])
+    zpath = fp.quick_scan(root, out, log=lambda *_: None, list_paths=True)[0]
+    z = zopen(zpath)
     members = [n for n in z.namelist() if n.startswith("Paths/")]
     rows = [r for m in members for r in rd(z, m)]
     listed = {(r["project"], r["path"]): (int(r["size_bytes"]), r["modified_utc"]) for r in rows}
@@ -38,10 +41,10 @@ with tempfile.TemporaryDirectory() as t:
     info = {r["key"]: r["value"] for r in rd(z, "Run_info.csv")}
     check("Run_info says the lists are there, nothing dropped", (info["file_paths_listed"], info["file_paths_not_kept_over_limit"]), ("yes", "0"))
     # the switch
-    z0 = zipfile.ZipFile(fp.quick_scan(root, os.path.join(t, "o0"), log=lambda *_: None, list_paths=False)[0])
+    z0 = zopen(fp.quick_scan(root, os.path.join(t, "o0"), log=lambda *_: None, list_paths=False)[0])
     check("switched off: no Paths folder and no file names anywhere in the zip", (any(n.startswith("Paths") for n in z0.namelist()), b"ZQXAlpha" in b"".join(z0.read(n) for n in z0.namelist())), (False, True))
     # anonymised
-    za = zipfile.ZipFile(fp.quick_scan(root, os.path.join(t, "oa"), log=lambda *_: None, list_paths=True, anonymize_names=True)[0]); mapz = zipfile.ZipFile(fp.LAST_RUN["map_zip"])
+    za = zopen(fp.quick_scan(root, os.path.join(t, "oa"), log=lambda *_: None, list_paths=True, anonymize_names=True)[0]); mapz = zopen(fp.LAST_RUN["map_zip"])
     blob = b"".join(za.read(n) for n in za.namelist()).decode("utf-8", "replace").lower()
     check("anonymised: no real project, folder or file name in any list", [w for w in ("zqx", "plan, final", "ünïcode", "notes", "still") if w in blob], [])
     m = {r["anonymised"]: r["original"] for r in rd(mapz, "Name_Map.csv")}
@@ -53,10 +56,10 @@ with tempfile.TemporaryDirectory() as t:
     check("the separate map decodes every anonymised path back to the real one (case-insensitive)", {(a.lower(), b.lower()) for a, b in dec} == {(a.lower(), b.lower()) for (a, b) in expect}, True)
     # cap
     old = fp.PATHS_MAX_FILES; fp.PATHS_MAX_FILES = 3
-    zc = zipfile.ZipFile(fp.quick_scan(root, os.path.join(t, "oc"), log=lambda *_: None, list_paths=True)[0]); fp.PATHS_MAX_FILES = old
+    zc = zopen(fp.quick_scan(root, os.path.join(t, "oc"), log=lambda *_: None, list_paths=True)[0]); fp.PATHS_MAX_FILES = old
     ic = {r["key"]: r["value"] for r in rd(zc, "Run_info.csv")}; kept = sum(len(rd(zc, n)) for n in zc.namelist() if n.startswith("Paths/"))
     check("over the memory cap: the lists stop, the number not kept is reported, the counts stay exact", (kept < len(expect), int(ic["file_paths_not_kept_over_limit"]) > 0, ic["files"]), (True, True, str(len(expect))))
     # the compile skill still reads a Step 1 zip that carries Paths/
-    r = subprocess.run([sys.executable, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "compile_profiles.py"), z.filename, "--out", os.path.join(t, "comp")], capture_output=True, text=True)
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "compile_profiles.py"), zpath, "--out", os.path.join(t, "comp")], capture_output=True, text=True)
     check("the compile skill reads the Step 1 zip with the lists", (r.returncode, os.path.exists(os.path.join(t, "comp", "quick_count.xlsx"))), (0, True))
 sys.exit(1 if any(bad) else 0)

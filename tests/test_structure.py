@@ -3,6 +3,7 @@ Run: python tests/test_structure.py"""
 import csv, io, os, struct, sys, tempfile, zipfile, zlib
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 try:
     import compile_profiles as cp
@@ -160,7 +161,7 @@ with tempfile.TemporaryDirectory() as t:
     os.chmod(os.path.join(src, "P", "locked"), 0)
     try:
         z, _np, nfiles, errs = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1)
-        info = {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zipfile.ZipFile(z).read("Run_info.csv").decode("utf-8-sig")))}
+        info = {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zopen(z).read("Run_info.csv").decode("utf-8-sig")))}
         check("an unreadable folder is reported, not silently skipped", (info["unreadable_folders"], int(info["read_errors"]) >= 1), ("1", True))
     finally:
         os.chmod(os.path.join(src, "P", "locked"), 0o755)

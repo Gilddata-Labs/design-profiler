@@ -2,6 +2,7 @@
 removed; container limits (cgroup v1 / v2) lower the memory budget and the default worker count."""
 import csv, glob, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp, sysmetrics
 bad = []
 def check(l, g, w):
@@ -21,9 +22,9 @@ with tempfile.TemporaryDirectory() as t:
             open(f, "wb").write(b"x" * (i % 17)); os.utime(f, (1_700_000_000 + i * 31, 1_700_000_000 + i * 31))
     tmpd = os.path.join(t, "tmp"); os.makedirs(tmpd); os.environ["TMPDIR"] = tmpd; tempfile.tempdir = None
     os.environ.pop("PROFILER_PATHS_MEM_ROWS", None)
-    a = rows(zipfile.ZipFile(fp.quick_scan(root, os.path.join(t, "a"), log=lambda *_: None, list_paths=True, workers=3)[0]))
+    a = rows(zopen(fp.quick_scan(root, os.path.join(t, "a"), log=lambda *_: None, list_paths=True, workers=3)[0]))
     os.environ["PROFILER_PATHS_MEM_ROWS"] = "30"                                  # far below the 2,400 files: many spills
-    zb = zipfile.ZipFile(fp.quick_scan(root, os.path.join(t, "b"), log=lambda *_: None, list_paths=True, workers=3)[0])
+    zb = zopen(fp.quick_scan(root, os.path.join(t, "b"), log=lambda *_: None, list_paths=True, workers=3)[0])
     b = rows(zb)
     info = {r[0]: r[1] for r in csv.reader(io.StringIO(zb.read("Run_info.csv").decode("utf-8-sig")))}
     check("2,400 files listed", len(a), 2400)

@@ -3,11 +3,12 @@ changes while the run works is reported with the exact difference per project an
 import os as _os, tempfile as _tf; _os.environ["PROFILER_NAME_KEY_FILE"] = _os.path.join(_tf.mkdtemp(), "name_key")   # tests never touch the real key in ~/.folder-profiler
 import csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 bad = []
 def check(l, g, w):
     ok = g == w; print(("ok   " if ok else "FAIL ") + f"{l}: {g}" + ("" if ok else f" (wanted {w})")); bad.append(not ok)
-def rd(z, n): return list(csv.DictReader(io.StringIO(zipfile.ZipFile(z).read(n).decode("utf-8-sig"))))
+def rd(z, n): return list(csv.DictReader(io.StringIO(zopen(z).read(n).decode("utf-8-sig"))))
 def info(z): return {r["key"]: r["value"] for r in rd(z, "Run_info.csv")}
 def mk(path, size, mt=1_700_000_000):
     os.makedirs(os.path.dirname(path), exist_ok=True); open(path, "wb").write(b"x" * size); os.utime(path, (mt, mt))

@@ -3,6 +3,7 @@ and fall back to per-run codes (said so in Run_info) when no key can be kept."""
 import csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 t0 = tempfile.mkdtemp()
 KEY = os.path.join(t0, "keys", "name_key")
 os.environ["PROFILER_NAME_KEY_FILE"] = KEY
@@ -41,7 +42,7 @@ for rel, data in (("ZQXClientOne/ZQXSub/ZQXPart.sldprt", b"p" * 300), ("ZQXClien
 q = fp.quick_scan(src, out1, anonymize_names=True)[0]
 s2 = fp.profile(src, out2, label="lbl", resume=False, system_info=False, anonymize_names=True)[0]
 q2 = fp.quick_scan(src, out3, anonymize_names=True)[0]
-zq, zs, zq2 = zipfile.ZipFile(q), zipfile.ZipFile(s2), zipfile.ZipFile(q2)
+zq, zs, zq2 = zopen(q), zopen(s2), zopen(q2)
 pq = sorted(r[0] for r in rd(zq, "Projects.csv")[1:] if r[0] != "(root)"); ps = sorted(r[0] for r in rd(zs, "Projects.csv")[1:] if r[0] != "(root)")
 check("Step 1 and Step 2 give the same project codes", (pq, pq == ps, len(pq)), (ps, True, 2))
 check("a second Step 1 (other output folder) gives the same codes again", sorted(r[0] for r in rd(zq2, "Projects.csv")[1:] if r[0] != "(root)"), pq)
@@ -53,7 +54,7 @@ info = lambda z: {r[0]: r[1] for r in rd(z, "Run_info.csv")}
 check("Run_info says the codes are kept", (info(zq)["name_codes"], info(zs)["name_codes"]), ("same on every run (kept key)",) * 2)
 check("same root id in both steps", info(zq)["folder_name"] == info(zs)["folder_name"] and info(zq)["folder_name"].startswith("ROOT-"), True)
 maps = [f for f in os.listdir(out2) if f.startswith("name_map_")]
-mz = zipfile.ZipFile(os.path.join(out2, maps[0]))
+mz = zopen(os.path.join(out2, maps[0]))
 check("the map zip carries the key copy and says so; the profile zips do not", ("Name_Key.txt" in mz.namelist(), mz.read("Name_Key.txt").decode().strip() == key.hex(), any("Key" in n for n in zs.namelist() + zq.namelist())), (True, True, False))
 leak = [(n, key.hex()[:16]) for z in (zs, zq) for n in z.namelist() if key.hex()[:16] in z.read(n).decode("utf-8", "replace")]
 check("the key itself is in no shareable zip", leak, [])
@@ -61,6 +62,6 @@ check("the key itself is in no shareable zip", leak, [])
 # ---- no key can be kept -> per-run codes, said so
 os.environ["PROFILER_NAME_KEY_FILE"] = os.path.join(KEY, "cannot", "be", "made")      # a path under an existing FILE
 r = fp.quick_scan(src, os.path.join(t0, "o4"), anonymize_names=True)[0] if os.makedirs(os.path.join(t0, "o4")) is None else None
-zr = zipfile.ZipFile(r)
+zr = zopen(r)
 check("unwritable key place -> Run_info says new for this run only", info(zr)["name_codes"].startswith("new for this run only"), True)
 sys.exit(1 if any(bad) else 0)

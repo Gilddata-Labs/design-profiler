@@ -2,6 +2,7 @@
 import os, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
 import file_profiler as fp
 try:
@@ -47,7 +48,7 @@ with tempfile.TemporaryDirectory() as t:
     check("Elec domain", r["Elec"][2], "Electronics"); check("Elec software", r["Elec"][3], "Altium")
     check("Arch domain / parts", (r["Arch"][2], r["Arch"][4]), ("Architecture", 2))
     import zipfile, csv, io
-    info = {x["key"]: x["value"] for x in csv.DictReader(io.StringIO(zipfile.ZipFile(zip_path).read("Run_info.csv").decode("utf-8-sig")))}
+    info = {x["key"]: x["value"] for x in csv.DictReader(io.StringIO(zopen(zip_path).read("Run_info.csv").decode("utf-8-sig")))}
     check("files counted (16 real files)", nfiles, 16)
     check("junk .DS_Store ignored, and reported", info["ignored_system_files"], "1")
     check("unmapped listed", any(x[1] == "unmapped extension" and ".weird" in x[2] for x in review), True)

@@ -2,6 +2,7 @@
 listed once with their file number and a reason, the saved per-chunk problem files survive a resume, and the run counts agree."""
 import csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 bad = []
 def check(l, g, w):
@@ -25,7 +26,7 @@ with tempfile.TemporaryDirectory() as t:
                 fp.PIPELINE_CHUNKS = pipe
                 out = os.path.join(t, f"o_{chunk}_{pipe}")
                 z, *_ = fp.profile(src, out, workers=3, chunk_files=chunk, system_info=False, tier=2, **quiet)
-                zf = zipfile.ZipFile(z); rp = rd(zf, "Read_Problems.csv")
+                zf = zopen(z); rp = rd(zf, "Read_Problems.csv")
                 info = {r["key"]: r["value"] for r in rd(zf, "Run_info.csv")}
                 files = rd(zf, "Files.csv"); unread = [r for r in files if "UNREADABLE" in r["header_signature"]]
                 tag = f"chunk={chunk} pipeline={pipe}"
@@ -36,7 +37,7 @@ with tempfile.TemporaryDirectory() as t:
         out = os.path.join(t, "o_resume")
         fp.profile(src, out, workers=2, chunk_files=5, system_info=False, tier=2, **quiet)
         z, *_ = fp.profile(src, out, workers=2, chunk_files=5, system_info=False, tier=2, **quiet)          # second run: resumes, everything saved
-        zf = zipfile.ZipFile(z)
+        zf = zopen(z)
         check("after a resume the problems saved by the first run are still all listed", len(rd(zf, "Read_Problems.csv")), len(locked))
     finally:
         for f in locked: os.chmod(f, 0o644)

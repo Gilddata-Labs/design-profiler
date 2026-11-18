@@ -142,10 +142,13 @@ def _read_answers(path):
         return None
     if path.lower().endswith((".xlsx", ".xlsm")):
         import openpyxl
-        ws = openpyxl.load_workbook(path, read_only=True, data_only=True).worksheets[0]
-        it = ws.iter_rows(values_only=True)
-        head = [str(h or "").strip() for h in next(it)]
-        rows = [dict(zip(head, ["" if v is None else str(v) for v in r])) for r in it]
+        wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+        try:   # a read_only workbook keeps the file open until closed; Windows cannot delete it meanwhile
+            it = wb.worksheets[0].iter_rows(values_only=True)
+            head = [str(h or "").strip() for h in next(it)]
+            rows = [dict(zip(head, ["" if v is None else str(v) for v in r])) for r in it]
+        finally:
+            wb.close()
     else:
         rows = _rows(path)
     out = {}

@@ -2,11 +2,12 @@
 on the run and which projects each profiled, progress in another STATE_FORMAT is not reused, and a changed setting still starts afresh."""
 import csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 bad = []
 def check(l, g, w):
     ok = g == w; print(("ok   " if ok else "FAIL ") + f"{l}: {g}" + ("" if ok else f" (wanted {w})")); bad.append(not ok)
-def rd(z, n): return list(csv.DictReader(io.StringIO(zipfile.ZipFile(z).read(n).decode("utf-8-sig"))))
+def rd(z, n): return list(csv.DictReader(io.StringIO(zopen(z).read(n).decode("utf-8-sig"))))
 def rows_of(z): return [{k: v for k, v in r.items() if k != "dir_id"} for r in rd(z, "Files.csv")]
 def info_of(z): return {r["key"]: r["value"] for r in rd(z, "Run_info.csv")}
 CALLS = [0]; _sig = fp.signature

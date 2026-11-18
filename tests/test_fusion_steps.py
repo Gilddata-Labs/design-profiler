@@ -4,11 +4,12 @@ exactly the output of an uninterrupted run; a locked folder is reported without 
 import csv, http.server, io, json, os, shutil, sys, tempfile, threading, time, urllib.parse, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+from _helpers import zopen, wopen  # noqa: E402
 import fusion_cloud_profiler as fc
 bad = []
 def check(l, g, w):
     ok = g == w; print(("ok   " if ok else "FAIL ") + f"{l}: {g}" + ("" if ok else f" (wanted {w})")); bad.append(not ok)
-def rd(z, n): return list(csv.DictReader(io.StringIO(zipfile.ZipFile(z).read(n).decode("utf-8-sig"))))
+def rd(z, n): return list(csv.DictReader(io.StringIO(zopen(z).read(n).decode("utf-8-sig"))))
 def info(z): return {r["key"]: r["value"] for r in rd(z, "Run_info.csv")}
 
 # ---- a fake hub: project Gear (3 levels, unique names), project Small, project Locked (403)
@@ -72,9 +73,9 @@ with tempfile.TemporaryDirectory() as t:
     # ---- Step 1: counts only, no names
     out1 = os.path.join(t, "s1"); zq, nq, npq, stq = run(out1, 1)
     check("Step 1 counts the same items", (nq, npq), (TOTAL_ITEMS, 3))
-    members = zipfile.ZipFile(zq).namelist()
+    members = zopen(zq).namelist()
     check("Step 1 zip is a quick-count zip (Extensions_All.csv, no Files.csv)", ("Extensions_All.csv" in members, "Files.csv" in members), (True, False))
-    blob = b"".join(zipfile.ZipFile(zq).read(m) for m in members).decode("utf-8", "replace")
+    blob = b"".join(zopen(zq).read(m) for m in members).decode("utf-8", "replace")
     check("Step 1 holds NO item or folder names (only project names and the unreadable folder)", ("SECRETNAME" in blob, "SecretFolder" in blob, "SecretSub" in blob, "Gear Files" in blob), (False, False, False, False))
     ext_all = {r["ext"]: (int(r["file_count"]), int(r["total_bytes"])) for r in rd(zq, "Extensions_All.csv")}
     exp = {}

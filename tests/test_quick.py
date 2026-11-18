@@ -2,11 +2,13 @@
 import builtins, csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+from _helpers import zopen, wopen  # noqa: E402
+Q = "'" if os.name == "nt" else '"'   # a quote in a file name: Windows forbids the double one
 import file_profiler as fp
 bad = []
 def check(label, got, want):
     ok = got == want; print(("ok   " if ok else "FAIL ") + f"{label}: {got}" + ("" if ok else f"   (wanted {want})")); bad.append(not ok)
-rd = lambda z, n: list(csv.DictReader(io.StringIO(zipfile.ZipFile(z).read(n).decode("utf-8-sig"))))
+rd = lambda z, n: list(csv.DictReader(io.StringIO(zopen(z).read(n).decode("utf-8-sig"))))
 def put(base, rel, body=b"x"):
     path = os.path.join(base, rel); os.makedirs(os.path.dirname(path), exist_ok=True); open(path, "wb").write(body)
 
@@ -89,7 +91,7 @@ with tempfile.TemporaryDirectory() as t:
 # ---- unexpected extensions never break the count, and never become spreadsheet formulas
 with tempfile.TemporaryDirectory() as t:
     odd = os.path.join(t, "odd", "P")
-    names = ["noext", "trailingdot.", "Mixed.CaSe", ".gitignore", "evil.=1+1", "at.@sum", "dash.-5", "comma,name.c,d", 'quote".q"x',
+    names = ["noext", "trailingdot.", "Mixed.CaSe", ".gitignore", "evil.=1+1", "at.@sum", "dash.-5", "comma,name.c,d", f'quote{Q}.q{Q}x',
              "tab\there.txt", "long." + "x" * 120, "unicode.\u6570\u636e", "UPPER.DWG", "dup.dwg", "spaces.my ext"]
     for n in names:
         put(odd, n, b"x" * 10)
@@ -107,7 +109,7 @@ with tempfile.TemporaryDirectory() as t:
         em, sf = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
         out = cp.Path(t) / "oc"; out.mkdir()
         cp.compile_quick([qz], em, sf, out)
-        ws = openpyxl.load_workbook(out / "quick_count.xlsx")["By Extension"]
+        ws = wopen(out / "quick_count.xlsx")["By Extension"]
         cells = {c.value: c for c in (r[0] for r in ws.iter_rows(min_row=2))}
         check("'=1+1' is stored as text, not as a formula", (cells["=1+1"].data_type, cells["=1+1"].value), ("s", "=1+1"))
         txt = open(out / "Quick_By_Extension.csv", encoding="utf-8-sig").read()

@@ -3,11 +3,13 @@ projects with the fast check, catches every kind of change (size, date, added, r
 for progress saved without a fingerprint (and saves one), and still ends with exactly an uninterrupted run's output."""
 import csv, io, json, os, sys, tempfile, time, zipfile, collections
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
+Q = "'" if os.name == "nt" else '"'   # a quote in a file name: Windows forbids the double one
 import file_profiler as fp
 bad = []
 def check(l, g, w):
     ok = g == w; print(("ok   " if ok else "FAIL ") + f"{l}: {g}" + ("" if ok else f" (wanted {w})")); bad.append(not ok)
-def rd(z, n): return list(csv.DictReader(io.StringIO(zipfile.ZipFile(z).read(n).decode("utf-8-sig"))))
+def rd(z, n): return list(csv.DictReader(io.StringIO(zopen(z).read(n).decode("utf-8-sig"))))
 def rows_of(z): return [{k: v for k, v in r.items() if k != "dir_id"} for r in rd(z, "Files.csv")]
 fp.PIPELINE_CHUNKS = 0
 class Boom(Exception): pass
@@ -18,7 +20,7 @@ with tempfile.TemporaryDirectory() as t:
     # ---- 1. parity of the two fingerprints on an awkward tree
     root = os.path.join(t, "par")
     for rel, size in [("A/a.dwg", 5), ("A/sub/deep/er/b.pdf", 7), ("A/ünï cödé.txt", 3), ("A/Thumbs.db", 9), ("A/._junk", 2), ("A/empty.txt", 0),
-                      ("B/x, y \"q\".dwg", 4), ("B/n/n/n/n/n/z.sldprt", 6), ("loose.txt", 8)]:
+                      ("B/x, y " + Q + "q" + Q + ".dwg", 4), ("B/n/n/n/n/n/z.sldprt", 6), ("loose.txt", 8)]:
         mk(os.path.join(root, *rel.split("/")), size)
     os.makedirs(os.path.join(root, "B", "emptydir"))
     units, label, _ = fp.resolve_units(root, None, None, 1)

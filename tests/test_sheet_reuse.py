@@ -1,6 +1,7 @@
 """Exact copies of a drawing (same name, size, date) are not read twice; everything else is."""
 import csv, io, os, sys, tempfile, zipfile, builtins
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 bad = []
 def check(l, g, w):
@@ -28,7 +29,7 @@ with tempfile.TemporaryDirectory() as t:
         z = fp.profile(root, out, log=lambda *_: None, resume=False, system_info=False, workers=1)[0]     # one worker: the first copy is finished before the next starts
     finally:
         builtins.open = real_open
-    zf = zipfile.ZipFile(z)
+    zf = zopen(z)
     rows = {r["project"] + "/" + r["rel_path"]: r for r in csv.DictReader(io.StringIO(zf.read("Files.csv").decode("utf-8-sig")))}
     info = {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zf.read("Run_info.csv").decode("utf-8-sig")))}
     check("only one of the three exact copies was opened (plus the two different ones)", len(opened), 3)

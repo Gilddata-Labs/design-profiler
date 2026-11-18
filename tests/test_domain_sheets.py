@@ -3,6 +3,7 @@ Run: python tests/test_domain_sheets.py     (TEMPLATE_XLSX=<path> also compares 
 import datetime, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+from _helpers import zopen, wopen  # noqa: E402
 try:
     import compile_profiles as cp
     import domain_metrics as dm
@@ -89,7 +90,7 @@ with tempfile.TemporaryDirectory() as t:
     tpl = os.environ.get("TEMPLATE_XLSX")
     if tpl:
         import openpyxl
-        wb = openpyxl.load_workbook(tpl)
+        wb = wopen(tpl)
         check("headings equal the real template, character for character", [[c.value for c in wb[s][1]] for s in ("Mechanical", "Architecture", "Electronics")], [dm.MECH_HEADINGS, dm.ARCH_HEADINGS, dm.ELEC_HEADINGS])
     check("each project is in the sheet of its own domain", {s: [r[0] for r in rows] for s, rows in sheets.items()},
           {"Mechanical": ["M1", "M2"], "Architecture": ["A1", "A2", "A3", "A4"], "Electronics": ["E1", "E2"]})

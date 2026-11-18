@@ -2,12 +2,13 @@
 time, a crash with chunks in flight must resume to the same result (only the unsaved window is redone), and the overlap must really save time."""
 import builtins, csv, io, os, shutil, sys, tempfile, time, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 bad = []
 def check(l, g, w):
     ok = g == w; print(("ok   " if ok else "FAIL ") + f"{l}: {g}" + ("" if ok else f" (wanted {w})")); bad.append(not ok)
 def rows(z, n, drop=()):
-    return [{k: v for k, v in r.items() if k not in drop} for r in csv.DictReader(io.StringIO(zipfile.ZipFile(z).read(n).decode("utf-8-sig")))]
+    return [{k: v for k, v in r.items() if k not in drop} for r in csv.DictReader(io.StringIO(zopen(z).read(n).decode("utf-8-sig")))]
 def build(root, projects=4, files=60):
     for p in range(projects):
         for f in range(files):

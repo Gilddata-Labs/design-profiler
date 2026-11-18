@@ -3,7 +3,7 @@
 GildData's profiler for design datasets (CAD, BIM, EDA). A seller runs it on their own machine and sends us one zip of metrics;
 GildData compiles the zips into the catalogue, QC and buyer workbooks. Built on the Folder Profiler engine
 (data847/folder-profiler, commit in `UPSTREAM_COMMIT`); everything below the line is the engine's own documentation.
-PRD: "PRD: GildData Design Data Profiler v1" (Claude Doc). Decisions live in Ownr, Gilddata Commons, project Gilddata CAD Folder Profiler.
+The product requirements and decisions are kept in GildData's internal documents.
 
 ## Commands (`python3 gilddesign.py <command>`)
 

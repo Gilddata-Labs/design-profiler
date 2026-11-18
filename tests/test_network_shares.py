@@ -3,11 +3,12 @@ files that must never be opened, and drive-aware thread counts - for step 1 AND 
 import builtins, csv, errno, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 bad = []
 def check(label, got, want):
     ok = got == want; print(("ok   " if ok else "FAIL ") + f"{label}: {got}" + ("" if ok else f"   (wanted {want})")); bad.append(not ok)
-rd = lambda z, n: list(csv.DictReader(io.StringIO(zipfile.ZipFile(z).read(n).decode("utf-8-sig"))))
+rd = lambda z, n: list(csv.DictReader(io.StringIO(zopen(z).read(n).decode("utf-8-sig"))))
 info = lambda z, f=None: {r["key"]: r["value"] for r in rd(z, "Run_info.csv")}
 def put(base, rel, body=b"x"):
     path = os.path.join(base, rel); os.makedirs(os.path.dirname(path), exist_ok=True); open(path, "wb").write(body)

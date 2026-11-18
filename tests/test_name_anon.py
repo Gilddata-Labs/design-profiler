@@ -4,6 +4,7 @@ import os as _os, tempfile as _tf; _os.environ["PROFILER_NAME_KEY_FILE"] = _os.p
 import csv, hashlib, io, os, stat, sys, tempfile, time, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp, name_anon
 bad = []
 def check(l, g, w):
@@ -50,7 +51,7 @@ with tempfile.TemporaryDirectory() as t:
     t0 = time.time(); anon = fp.profile(src, out2, label="rootlabel", resume=False, system_info=False, anonymize_names=True)[0]; t_anon = time.time() - t0
     map_zip = fp.LAST_RUN["map_zip"]
     print(f"     (seconds: plain {t_plain:.2f}, anonymised {t_anon:.2f})")
-    zp, za = zipfile.ZipFile(plain), zipfile.ZipFile(anon)
+    zp, za = zopen(plain), zopen(anon)
     check("source files and folders unchanged", digest(), before)
     check("the map is a SEPARATE zip, and the profile holds no map", (os.path.exists(map_zip), any("map" in n.lower() for n in za.namelist())), (True, False))
     stats = [f for f in os.listdir(out2) if f.startswith("run_stats_") and f.endswith(".zip")]
@@ -63,8 +64,8 @@ with tempfile.TemporaryDirectory() as t:
     # the stats zip of the anonymised run: the newest one
     newest = os.path.join(out2, stats[0])
     sl = []
-    for name in zipfile.ZipFile(newest).namelist():
-        blob = zipfile.ZipFile(newest).read(name).decode("utf-8", "replace").lower()
+    for name in zopen(newest).namelist():
+        blob = zopen(newest).read(name).decode("utf-8", "replace").lower()
         sl += [(name, s) for s in SENT + ["rootlabel"] if s.lower() in blob]
     check("no real name in the shareable run statistics either", sl, [])
     check("a plain run still has them (the test would be blind otherwise)", any("zqx" in zp.read(n).decode("utf-8", "replace").lower() for n in zp.namelist()), True)
@@ -80,7 +81,7 @@ with tempfile.TemporaryDirectory() as t:
     check("Extensions.csv counts equal", sorted(r[1:] for r in rd(za, "Extensions.csv")[1:]) == sorted(r[1:] for r in rd(zp, "Extensions.csv")[1:]), True)
 
     # ---- the map decodes every path exactly
-    mp = zipfile.ZipFile(map_zip); rows = rd(mp, "Name_Map.csv")[1:]
+    mp = zopen(map_zip); rows = rd(mp, "Name_Map.csv")[1:]
     dec = {r[2].lower(): r[1] for r in rows}
     def decode_part(c):
         stem, ext = name_anon.split_name(c); return dec.get(stem.lower(), stem) + ext
@@ -113,13 +114,13 @@ with tempfile.TemporaryDirectory() as t:
     # ---- step 1
     q_plain = fp.quick_scan(src, out)[0]
     q_anon = fp.quick_scan(src, out2, anonymize_names=True)[0]
-    zq, zqa = zipfile.ZipFile(q_plain), zipfile.ZipFile(q_anon)
+    zq, zqa = zopen(q_plain), zopen(q_anon)
     ql = [(n, s) for n in zqa.namelist() for s in SENT + ["rootlabel", "ZQXRootFolder"] if s.lower() in zqa.read(n).decode("utf-8", "replace").lower()]
     check("step 1: no real name in the anonymised quick count", ql, [])
     check("step 1: counts equal to the plain quick count", [r[1:] for r in rd(zqa, "Projects.csv")[1:]] == [r[1:] for r in rd(zq, "Projects.csv")[1:]], True)
-    check("step 1: separate map zip decodes the project codes", sorted(r[1] for r in rd(zipfile.ZipFile(fp.LAST_RUN["map_zip"]), "Name_Map.csv")[1:] if r[0] == "project"),
+    check("step 1: separate map zip decodes the project codes", sorted(r[1] for r in rd(zopen(fp.LAST_RUN["map_zip"]), "Name_Map.csv")[1:] if r[0] == "project"),
           sorted(r[0] for r in rd(zq, "Projects.csv")[1:] if r[0] != "(root)"))
     check("step 1: the anonymised Projects.csv holds those codes", sorted(r[0] for r in rd(zqa, "Projects.csv")[1:] if r[0] != "(root)"),
-          sorted(r[2] for r in rd(zipfile.ZipFile(fp.LAST_RUN["map_zip"]), "Name_Map.csv")[1:] if r[0] == "project"))
+          sorted(r[2] for r in rd(zopen(fp.LAST_RUN["map_zip"]), "Name_Map.csv")[1:] if r[0] == "project"))
     os.chmod(locked, stat.S_IRWXU)
 sys.exit(1 if any(bad) else 0)

@@ -2,6 +2,7 @@
 import http.server, json, os, sys, tempfile, threading, urllib.parse, zipfile, csv, io
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+from _helpers import zopen, wopen  # noqa: E402
 import fusion_cloud_profiler as fc
 bad = []
 def check(l, g, w):
@@ -60,7 +61,7 @@ except fc.ApiError as e:
     check("401 without refresher raises a clear error", "no read permission" in str(e), True)
 with tempfile.TemporaryDirectory() as t:
     path, n, np_, stats = fc.run(api, "b.hub1", "Acme Hub", t, quiet=True)
-    z = zipfile.ZipFile(path); rd = lambda name: list(csv.DictReader(io.StringIO(z.read(name).decode("utf-8-sig"))))
+    z = zopen(path); rd = lambda name: list(csv.DictReader(io.StringIO(z.read(name).decode("utf-8-sig"))))
     files = rd("Files.csv")
     check("4 items found in 2 projects", (n, np_), (4, 2))
     row = {f["rel_path"].split("/")[-1]: f for f in files}
