@@ -1,7 +1,7 @@
 """Exact copies of a drawing (same name, size, date) are not read twice; everything else is."""
 import csv, io, os, sys, tempfile, zipfile, builtins
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
-from _helpers import zopen, wopen  # noqa: E402
+from _helpers import zopen, wopen, under, plain  # noqa: E402
 import file_profiler as fp
 bad = []
 def check(l, g, w):
@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory() as t:
     put("P5/plan.dxf", a, mtime=1_600_000_000)                                                   # same name and size, other date -> read
     opened = []; real_open = open
     def spy(f, *x, **k):
-        if isinstance(f, str) and os.path.normcase(f).startswith(os.path.normcase(root)) and f.lower().endswith(".dxf"): opened.append(os.path.relpath(f, root))
+        if isinstance(f, (str, bytes)) and under(f, root) and plain(f).lower().endswith(".dxf"): opened.append(os.path.relpath(plain(f), root))
         return real_open(f, *x, **k)
     builtins.open = spy
     try:

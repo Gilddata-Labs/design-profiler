@@ -15,3 +15,21 @@ def wopen(path, **kw):
     import openpyxl
     with open(path, "rb") as fh:
         return openpyxl.load_workbook(io.BytesIO(fh.read()), **kw)
+
+
+def plain(path):
+    """A path as the test wrote it: without the Windows \\\\?\\ (long path) prefix the profiler adds."""
+    if isinstance(path, bytes):
+        path = path.decode("utf-8", "replace")
+    path = str(path)
+    if path.startswith("\\\\?\\UNC\\"):
+        path = "\\\\" + path[8:]
+    elif path.startswith("\\\\?\\"):
+        path = path[4:]
+    return path
+
+
+def under(path, root):
+    """True when `path` (as passed to open or scandir) lies inside `root`, on any OS."""
+    import os
+    return os.path.normcase(plain(path)).startswith(os.path.normcase(plain(root)))

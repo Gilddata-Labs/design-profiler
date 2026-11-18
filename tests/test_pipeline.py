@@ -2,7 +2,7 @@
 time, a crash with chunks in flight must resume to the same result (only the unsaved window is redone), and the overlap must really save time."""
 import builtins, csv, io, os, shutil, sys, tempfile, time, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
-from _helpers import zopen, wopen  # noqa: E402
+from _helpers import zopen, wopen, under, plain  # noqa: E402
 import file_profiler as fp
 bad = []
 def check(l, g, w):
@@ -43,10 +43,10 @@ with tempfile.TemporaryDirectory() as t:
     slow = {"on": False}
     real_open, real_scandir = builtins.open, os.scandir
     def sopen(f, *a, **k):
-        if slow["on"] and isinstance(f, str) and os.path.normcase(f).startswith(os.path.normcase(root)): time.sleep(0.05)
+        if slow["on"] and isinstance(f, (str, bytes)) and under(f, root): time.sleep(0.05)
         return real_open(f, *a, **k)
     def sscan(p, *a, **k):
-        if slow["on"] and isinstance(p, str) and os.path.normcase(p).startswith(os.path.normcase(root)): time.sleep(0.03)
+        if slow["on"] and isinstance(p, (str, bytes)) and under(p, root): time.sleep(0.03)
         return real_scandir(p, *a, **k)
     builtins.open = sopen; os.scandir = sscan; slow["on"] = True
     try:

@@ -2,7 +2,7 @@
 import builtins, csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
-from _helpers import zopen, wopen  # noqa: E402
+from _helpers import zopen, wopen, under, plain  # noqa: E402
 Q = "'" if os.name == "nt" else '"'   # a quote in a file name: Windows forbids the double one
 import file_profiler as fp
 bad = []
@@ -99,7 +99,7 @@ with tempfile.TemporaryDirectory() as t:
     allx = {r["ext"]: int(r["file_count"]) for r in rd(qz, "Extensions_All.csv")}
     check("every odd file is counted (none lost, none crash)", (nfiles, sum(allx.values())), (len(names), len(names)))
     check("no extension -> (none); trailing dot -> (none); case folded; dotfile -> (none)", (allx["(none)"], allx["case"], allx["dwg"]), (3, 1, 2))
-    check("commas, quotes, long and unicode extensions survive the CSV", ("c,d" in allx, 'q"x' in allx, "x" * 120 in allx, "\u6570\u636e" in allx), (True,) * 4)
+    check("commas, quotes, long and unicode extensions survive the CSV", ("c,d" in allx, f"q{Q}x" in allx, "x" * 120 in allx, "\u6570\u636e" in allx), (True,) * 4)
     try:
         import compile_profiles as cp
     except ImportError:

@@ -2,7 +2,7 @@
 missing tag changes nothing), none may be a CAD / drawing / neutral / simulation / EDA class, and no file of them may be opened."""
 import os, sys, tempfile, zipfile, csv, io
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
-from _helpers import zopen, wopen  # noqa: E402
+from _helpers import zopen, wopen, under, plain  # noqa: E402
 import file_profiler as fp
 bad = []
 def check(l, g, w):
@@ -25,7 +25,7 @@ with tempfile.TemporaryDirectory() as t:
     real_open = open
     import builtins
     def spy(file, *a, **k):
-        if isinstance(file, str) and os.path.normcase(file).startswith(os.path.normcase(src)): opened.append(os.path.basename(file))
+        if isinstance(file, (str, bytes)) and under(file, src): opened.append(os.path.basename(plain(file)))
         return real_open(file, *a, **k)
     builtins.open = spy
     try:
