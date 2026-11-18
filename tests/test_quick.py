@@ -1,7 +1,7 @@
 """Step 1 - the quick count: same numbers as the full profile, but no file is opened.   Run: python tests/test_quick.py"""
 import builtins, csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 from _helpers import zopen, wopen  # noqa: E402
 Q = "'" if os.name == "nt" else '"'   # a quote in a file name: Windows forbids the double one
 import file_profiler as fp
@@ -81,7 +81,7 @@ with tempfile.TemporaryDirectory() as t:
     except ImportError:
         print("SKIP - compiler not present")
     else:
-        em, sf = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+        em, sf = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
         out = cp.Path(t) / "qc"; out.mkdir()
         check("quick zip is recognised, a full profile zip is not", (cp.is_quick_zip(qz), cp.is_quick_zip(fz)), (True, False))
         np_, nf, cls_rows = cp.compile_quick([qz], em, sf, out)
@@ -106,7 +106,7 @@ with tempfile.TemporaryDirectory() as t:
         cp = None
     if cp is not None and cp.Workbook:
         import openpyxl
-        em, sf = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+        em, sf = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
         out = cp.Path(t) / "oc"; out.mkdir()
         cp.compile_quick([qz], em, sf, out)
         ws = wopen(out / "quick_count.xlsx")["By Extension"]

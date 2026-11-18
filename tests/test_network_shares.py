@@ -89,19 +89,19 @@ with tempfile.TemporaryDirectory() as t:
             u2 = rd(fz, "Unreadable.csv")
             check("step 2: the same folder is listed", [(r["project"], r["kind"], r["path"], r["reason"]) for r in u2], [("Alpha", "folder", "locked", "PermissionError")])
             try:
-                sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+                sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
                 import compile_profiles as cp
             except ImportError:
                 cp = None
             if cp is not None:
                 import subprocess
                 outd = os.path.join(t, "cmp")
-                subprocess.run([sys.executable, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "compile_profiles.py"), fz, "--out", outd], capture_output=True, text=True)
+                subprocess.run([sys.executable, os.path.join(ROOT, "profile-compile", "scripts", "compile_profiles.py"), fz, "--out", outd], capture_output=True, text=True)
                 ur = list(csv.DictReader(open(os.path.join(outd, "Unreadable.csv"), encoding="utf-8-sig")))
                 rv = open(os.path.join(outd, "Review.csv"), encoding="utf-8-sig").read()
                 check("compiler: Unreadable.csv is written and Review explains it", ([(r["project"], r["path"]) for r in ur], "could not be read" in rv and "NOT in the counts" in rv), ([("Alpha", "locked")], True))
                 qd = os.path.join(t, "cmpq")
-                subprocess.run([sys.executable, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "compile_profiles.py"), qz2, "--out", qd], capture_output=True, text=True)
+                subprocess.run([sys.executable, os.path.join(ROOT, "profile-compile", "scripts", "compile_profiles.py"), qz2, "--out", qd], capture_output=True, text=True)
                 check("compiler: a step-1 zip passes the unreadable list on too", os.path.exists(os.path.join(qd, "Quick_Unreadable.csv")), True)
             fz0, *_ = fp.profile(src, os.path.join(t, "f0"), log=lambda *_: None, workers=2, system_info=False, tier=0)
             check("level 0 records no path", [r["path"] for r in rd(fz0, "Unreadable.csv")], [""])

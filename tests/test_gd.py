@@ -108,7 +108,7 @@ try:
 
     # supplier edition: internal commands refused
     sup = os.path.join(t, "supplier")
-    shutil.copytree(ROOT, sup, ignore=shutil.ignore_patterns("tests", "claude-skill", ".git", "output", "__pycache__", "dist"))
+    shutil.copytree(ROOT, sup, ignore=shutil.ignore_patterns("tests", "profile-compile", ".git", "output", "__pycache__", "dist"))
     open(os.path.join(sup, "EDITION"), "w").write("supplier\n")
     rc, txt = run("compile", out, root=sup, cwd=sup)
     check("supplier edition refuses compile", (rc, "internal edition" in txt), (2, True))

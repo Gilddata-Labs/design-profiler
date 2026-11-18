@@ -3,7 +3,7 @@ scan - all the way through profiler level 2 and the compiler.   Run: python test
 (CATIA / Creo files are SYNTHETIC; the Solid Edge OLE structure is real - see test_readers.py.)"""
 import csv, io, os, struct, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp, cad_links as cl
 try:
@@ -49,7 +49,7 @@ with tempfile.TemporaryDirectory() as t:
           ("CATIA:V5", "CREO", "OLE2:SolidEdge", "OLE2:Inventor"))
     kinds = {(l["project"], l["kind"]) for l in rd("Links.csv")}
     check("Links.csv: CATIA and Creo references are marked 'scan', Solid Edge 'native'", sorted(kinds), [("Cat", "scan"), ("Creo", "scan"), ("SE", "native")] if ("SE", "native") in kinds else sorted(kinds))
-    runs = cp.load_profiles([z]); em, sf = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([z]); em, sf = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     compiled, _f, stats, review, asm, ev = cp.compile_runs(runs, em, sf, False, "auto", True)
     pc = {c[0]: c for c in compiled}
     check("software by content: .asm/.prt with Creo header -> Creo", pc["Creo"][3], "Creo")

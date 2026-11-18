@@ -2,7 +2,7 @@
 an honest report of what is still unmapped, and an Assembly Breakdown that is never empty.   Run: python tests/test_categorisation.py"""
 import csv, io, os, subprocess, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 import file_profiler as fp
 try:
     import compile_profiles as cp
@@ -14,8 +14,8 @@ def check(label, got, want):
     ok = got == want; print(("ok   " if ok else "FAIL ") + f"{label}: {got}" + ("" if ok else f"   (wanted {want})")); bad.append(not ok)
 def put(base, rel, body=b"x"):
     p = os.path.join(base, rel); os.makedirs(os.path.dirname(p), exist_ok=True); open(p, "wb").write(body if isinstance(body, bytes) else body.encode())
-MAPDIR = os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping")
-SCRIPT = os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "compile_profiles.py")
+MAPDIR = os.path.join(ROOT, "profile-compile", "scripts", "mapping")
+SCRIPT = os.path.join(ROOT, "profile-compile", "scripts", "compile_profiles.py")
 em, sf = cp.load_mapping(MAPDIR)
 
 # --- the profiler: Creo versions and plain names

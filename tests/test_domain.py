@@ -2,7 +2,7 @@
 carries its basis and confidence.   Run: python tests/test_domain.py"""
 import csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 try:
     import compile_profiles as cp
 except ImportError:
@@ -40,7 +40,7 @@ with tempfile.TemporaryDirectory() as t:
         "I tools vs names": [("sldprt", f"p{i}") for i in range(12)] + dwgs([f"floor plan {i}" for i in range(40)]),
     }
     zp = profile(P, t)
-    em, sf = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    em, sf = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     compiled, _f, stats, review, *_ = cp.compile_runs(cp.load_profiles([zp]), em, sf, False, "none", False, "folder")
     dom = {c[0]: c[2] for c in compiled}
     st = {s[0]: s for s in stats}

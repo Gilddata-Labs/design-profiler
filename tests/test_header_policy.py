@@ -8,7 +8,7 @@ bad = []
 def check(l, g, w):
     ok = g == w; print(("ok   " if ok else "FAIL ") + f"{l}: {g}" + ("" if ok else f" (wanted {w})")); bad.append(not ok)
 # the profiler's table is the compiler's table
-mp = os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping", "extensions.csv")
+mp = os.path.join(ROOT, "profile-compile", "scripts", "mapping", "extensions.csv")
 if os.path.exists(mp):
     theirs = {l.split(",", 4)[0]: l.split(",", 4)[1] for l in open(mp, encoding="utf-8").read().splitlines()[1:]}
     check("ext_classes.csv equals the compiler's extensions.csv (ext -> class)", fp.EXT_CLASSES == theirs, True)

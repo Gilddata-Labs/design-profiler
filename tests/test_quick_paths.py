@@ -60,6 +60,6 @@ with tempfile.TemporaryDirectory() as t:
     ic = {r["key"]: r["value"] for r in rd(zc, "Run_info.csv")}; kept = sum(len(rd(zc, n)) for n in zc.namelist() if n.startswith("Paths/"))
     check("over the memory cap: the lists stop, the number not kept is reported, the counts stay exact", (kept < len(expect), int(ic["file_paths_not_kept_over_limit"]) > 0, ic["files"]), (True, True, str(len(expect))))
     # the compile skill still reads a Step 1 zip that carries Paths/
-    r = subprocess.run([sys.executable, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "compile_profiles.py"), zpath, "--out", os.path.join(t, "comp")], capture_output=True, text=True)
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "profile-compile", "scripts", "compile_profiles.py"), zpath, "--out", os.path.join(t, "comp")], capture_output=True, text=True)
     check("the compile skill reads the Step 1 zip with the lists", (r.returncode, os.path.exists(os.path.join(t, "comp", "quick_count.xlsx"))), (0, True))
 sys.exit(1 if any(bad) else 0)

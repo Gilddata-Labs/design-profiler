@@ -30,7 +30,7 @@ The product requirements and decisions are kept in GildData's internal documents
 - **Catalogue (`gd_catalogue.py`):** each seller zip compiled alone, then `design_catalogue.xlsx` (Catalogue, Sellers, Scores, QC Flags, Conflicts,
   Missing Fields, Duplicate Groups, Format Status, Method Notes), CSVs under `qc/`, and one HTML GildDesign Score card per dataset in `cards/`.
   All thresholds and weights are starting values in `gd_catalogue.SETTINGS`.
-- **Format status:** `claude-skill/profile-compile/scripts/mapping/format_status.csv` says per format what is read and how well it is verified.
+- **Format status:** `profile-compile/scripts/mapping/format_status.csv` says per format what is read and how well it is verified.
 - **CI:** `.github/workflows/ci.yml` runs every test on Windows, macOS and Linux (Python 3.9 and 3.12), builds and runs the Docker image sealed, and
   builds the release zips. It runs as soon as the repository is pushed to GitHub.
 
@@ -72,7 +72,7 @@ Two pieces:
 | Piece | Where | Who runs it |
 |---|---|---|
 | **Profiler** — produces `profile_<folder>_<date>.zip` | `file_profiler.py` (+ Docker / launchers) | the data owner, on their machine |
-| **Compiler skill** — turns those zips into the "Projects Compiled" workbook | `claude-skill/profile-compile/` | you, after receiving the zips |
+| **Compiler** — turns those zips into the "Projects Compiled" workbook | `profile-compile/` | you, after receiving the zips |
 
 ## Detail levels (default 2 - everything; the UI has no selector)
 
@@ -219,14 +219,14 @@ macOS: `run.command`.
 `IGES:ArchiCAD`, `DXF:AC1027:3D`, `DWG:AC1032`, `SIM:CalculiX`, `MESH:GMSH`, `PDF`. Raw header text is never kept.
 OS clutter (`.DS_Store`, `Thumbs.db`, `desktop.ini`) is skipped and counted in `Run_info.csv`.
 
-## Compile (the Claude skill)
+## Compile (the profile-compile scripts)
 
 ```bash
-python3 claude-skill/profile-compile/scripts/compile_profiles.py /folder/of/zips [--unique] [--pdf-drawings auto|none|all] [--project-by auto|structure|folder] [--no-assembly-breakdown]
+python3 profile-compile/scripts/compile_profiles.py /folder/of/zips [--unique] [--pdf-drawings auto|none|all] [--project-by auto|structure|folder] [--no-assembly-breakdown]
 ```
 Writes `Project_Compiled.csv`, `File_Level.csv`, `Project_Stats.csv`, `Review.csv` (+ `compiled.xlsx` if `openpyxl`
-is installed). Rules are two editable CSVs in `scripts/mapping/`. See `claude-skill/profile-compile/SKILL.md`;
-upload that folder to Claude as a skill to use it conversationally.
+is installed). Rules are two editable CSVs in `scripts/mapping/`. See `profile-compile/SKILL.md`;
+the folder can also be loaded into an AI assistant as a skill to use it conversationally.
 
 **Assembly Breakdown (estimate):** real part-to-assembly links live inside binary CAD files and are not readable without the CAD software.
 `--estimate-assemblies` fills the tab with an ESTIMATE whose rows sum to each project's totals: with profiler >= 1.2 each

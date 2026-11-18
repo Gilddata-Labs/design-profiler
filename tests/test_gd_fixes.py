@@ -8,7 +8,7 @@ import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 import cad_links  # noqa: E402
 import dwg_sheets  # noqa: E402
 import file_profiler as fp  # noqa: E402
@@ -130,7 +130,7 @@ try:
         print("skip dangling link check (no symlink privilege here)")
     import compile_profiles as cp
     runs = cp.load_profiles([zr])
-    ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    ext_map, soft = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     co = os.path.join(t, "compiled")
     os.makedirs(co)
     sys.argv = ["compile_profiles.py", zr, "--out", co]

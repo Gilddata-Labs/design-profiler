@@ -3,7 +3,7 @@ exactly, counts are identical to a plain run, references still resolve, and the 
 import os as _os, tempfile as _tf; _os.environ["PROFILER_NAME_KEY_FILE"] = _os.path.join(_tf.mkdtemp(), "name_key")   # tests never touch the real key in ~/.folder-profiler
 import csv, hashlib, io, os, stat, sys, tempfile, time, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp, name_anon
 bad = []
@@ -106,7 +106,7 @@ with tempfile.TemporaryDirectory() as t:
 
     # ---- the compiler reads the anonymised zip and gets the same numbers
     import compile_profiles as cp
-    em, sf = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    em, sf = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     ca = cp.compile_runs(cp.load_profiles([anon]), em, sf, False, "auto", True, "folder")[0]
     cb = cp.compile_runs(cp.load_profiles([plain]), em, sf, False, "auto", True, "folder")[0]
     check("compiled workbook rows: same numbers, only the names (and so the row order) differ", sorted(r[4:9] for r in ca) == sorted(r[4:9] for r in cb) and len(ca) == len(cb), True)

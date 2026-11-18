@@ -2,7 +2,7 @@
 Native 2D Drawings + PDF Drawings.   Run: python tests/test_drawing_breakdown.py"""
 import os, struct, sys, tempfile, zlib
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 import file_profiler as fp
 try:
     import compile_profiles as cp
@@ -31,7 +31,7 @@ with tempfile.TemporaryDirectory() as t:
     Q("B/B1.sldasm", sw_file(["b1.sldprt"])); Q("B/B2.sldasm", sw_file(["b2.sldprt"]))
     Q("B/b1.sldprt", "b1"); Q("B/b2.sldprt", "b2 data"); Q("B/other.slddrw", "x other")   # two assemblies in the folder: cannot tell
     z, *_ = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1, tier=2)
-    runs = cp.load_profiles([z]); em, sf = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([z]); em, sf = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     compiled, _f, stats, review, asm, ev = cp.compile_runs(runs, em, sf, False, "auto", True, "folder")
     rows = {r[1]: r for r in ev["drawings"]}
     check("one row per drawing file (4 native drawings + 1 PDF drawing)", sorted(rows), ["A.pdf", "A.slddrw", "a1.slddrw", "misc.slddrw", "other.slddrw"])

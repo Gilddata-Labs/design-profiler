@@ -1,7 +1,7 @@
 """Folder-based Assembly Breakdown estimate, end to end (profiler 1.2 -> compiler).  Run: python tests/test_folder_assemblies.py"""
 import os, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 import file_profiler as fp
 try:
     import compile_profiles as cp
@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory() as t:
         put(src, f"M/{rel}", rel)                      # distinct content so --unique would not merge anything
     put(src, "N/only.sldprt")                           # project without assemblies
     zip_path, *_ = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1, tier=0)
-    runs = cp.load_profiles([zip_path]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([zip_path]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     compiled, _f, _s, review, asm, _ev = cp.compile_runs(runs, ext_map, soft, False, "none", True)
     rows = {r[1]: r for r in asm if r[0] == "M"}
     row = lambda n: tuple(rows[n][2:])                 # parts, 2D, PDF, neutral

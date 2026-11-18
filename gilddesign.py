@@ -27,7 +27,7 @@ sys.path.insert(0, HERE)
 
 import gd_version  # noqa: E402
 
-COMPILER = os.path.join(HERE, "claude-skill", "profile-compile", "scripts", "compile_profiles.py")
+COMPILER = os.path.join(HERE, "profile-compile", "scripts", "compile_profiles.py")
 INTERNAL_ONLY = ("compile", "compare", "verify", "catalogue")
 
 

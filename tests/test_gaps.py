@@ -2,7 +2,7 @@
 Run: python tests/test_gaps.py"""
 import csv, io, os, struct, subprocess, sys, tempfile, zipfile, zlib
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 try:
@@ -20,8 +20,8 @@ def sw_file(refs):
 def put(base, rel, body=b"x"):
     path = os.path.join(base, rel); os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, "wb").write(body if isinstance(body, bytes) else body.encode())
-MAPDIR = os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping")
-SCRIPT = os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "compile_profiles.py")
+MAPDIR = os.path.join(ROOT, "profile-compile", "scripts", "mapping")
+SCRIPT = os.path.join(ROOT, "profile-compile", "scripts", "compile_profiles.py")
 def profile(src, t, name, **kw):
     z, *_ = fp.profile(src, os.path.join(t, name), log=lambda *_: None, workers=1, **kw); return z
 def comp(z, *a, **kw):

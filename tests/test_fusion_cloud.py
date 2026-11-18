@@ -1,7 +1,7 @@
 """Fusion cloud profiler against a local imitation of the APS Data Management API (shapes taken from Autodesk's OpenAPI spec)."""
 import http.server, json, os, sys, tempfile, threading, urllib.parse, zipfile, csv, io
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 from _helpers import zopen, wopen  # noqa: E402
 import fusion_cloud_profiler as fc
 bad = []
@@ -76,7 +76,7 @@ with tempfile.TemporaryDirectory() as t:
     check("Run_info", (info["files"], info["total_bytes"], info["source"], info["items_size_unknown"]), ("4", "13000", "autodesk-cloud-hub", "2"))
     check("zip has the compiler's files", {"Files.csv", "Projects.csv", "Dirs.csv", "Run_info.csv", "Unreadable.csv", "Unknown_Item_Types.csv"} <= set(z.namelist()), True)
     import compile_profiles as cp
-    em, sf = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    em, sf = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     compiled, *_ = cp.compile_runs(cp.load_profiles([path]), em, sf, False, "auto", True, "folder")
     pc = {c[0].split("/")[-1]: dict(zip(cp.HEADINGS, c)) for c in compiled}
     check("compiler reads it: Pumps = 2 parts (cloud design + bracket), Fusion 360", (pc["Pumps"]["Part Files"], pc["Pumps"]["Native CAD Software"]), (2, "Fusion 360"))

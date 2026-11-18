@@ -1,7 +1,7 @@
 """Detail levels 1-2, project depth, smart hashing, and link-based assembly assignment.  Run: python tests/test_levels.py"""
 import io, csv, os, sys, tempfile, zipfile, zlib, struct
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp, cad_links as cl
 try:
@@ -119,7 +119,7 @@ with tempfile.TemporaryDirectory() as t:
     if cp is None:
         print("SKIP - compiler checks (compile_profiles not found)")
         sys.exit(1 if any(bad) else 0)
-    runs = cp.load_profiles([z2]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([z2]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     compiled, _f, _s, review, asm, _ev = cp.compile_runs(runs, ext_map, soft, False, "auto", True)
     pc = {c[0]: c for c in compiled}
     a = [r for r in asm if r[0] == "Big/Alpha"]

@@ -3,7 +3,7 @@ Run: python tests/test_domain_split.py"""
 import csv, os, subprocess, sys, tempfile, zipfile
 from _helpers import zopen, wopen  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCRIPT = os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "compile_profiles.py")
+SCRIPT = os.path.join(ROOT, "profile-compile", "scripts", "compile_profiles.py")
 if not os.path.exists(SCRIPT):
     print("SKIP - compiler not found next to this package"); sys.exit(0)
 try:

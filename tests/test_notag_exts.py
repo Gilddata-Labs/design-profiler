@@ -8,7 +8,7 @@ bad = []
 def check(l, g, w):
     ok = g == w; print(("ok   " if ok else "FAIL ") + f"{l}: {g}" + ("" if ok else f" (wanted {w})")); bad.append(not ok)
 m = {}
-for l in open(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping", "extensions.csv"), encoding="utf-8").read().splitlines()[1:]:
+for l in open(os.path.join(ROOT, "profile-compile", "scripts", "mapping", "extensions.csv"), encoding="utf-8").read().splitlines()[1:]:
     p = l.split(",", 4); m[p[0]] = p[1]
 SAFE = {"IMG", "DOC", "DATA", "PDF", "ARCHIVE", "OTHER"}
 check("every skipped extension is mapped by name", sorted(e for e in fp.NO_HEAD_EXTS if e not in m), [])

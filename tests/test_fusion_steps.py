@@ -3,7 +3,7 @@ Autodesk; a run that crashes, is stopped or gives up under throttling carries on
 exactly the output of an uninterrupted run; a locked folder is reported without blocking reuse; a different state format starts afresh."""
 import csv, http.server, io, json, os, shutil, sys, tempfile, threading, time, urllib.parse, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 from _helpers import zopen, wopen  # noqa: E402
 import fusion_cloud_profiler as fc
 bad = []

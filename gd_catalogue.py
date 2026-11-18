@@ -29,8 +29,8 @@ import sys
 import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-COMPILER = os.path.join(HERE, "claude-skill", "profile-compile", "scripts", "compile_profiles.py")
-MAPPING = os.path.join(HERE, "claude-skill", "profile-compile", "scripts", "mapping")
+COMPILER = os.path.join(HERE, "profile-compile", "scripts", "compile_profiles.py")
+MAPPING = os.path.join(HERE, "profile-compile", "scripts", "mapping")
 sys.path.insert(0, HERE)
 import gd_manifest  # noqa: E402
 import gd_signals  # noqa: E402

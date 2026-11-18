@@ -3,7 +3,7 @@ import os, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 from _helpers import zopen, wopen  # noqa: E402
-sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 import file_profiler as fp
 try:
     import compile_profiles as cp
@@ -28,7 +28,7 @@ with tempfile.TemporaryDirectory() as t:
     put(src, "Elec/a.schdoc", "s"); put(src, "Elec/b.pcbdoc", "p")
     put(src, "Arch/house.rvt", "r"); put(src, "Arch/fam.rfa", "f")
     zip_path, nproj, nfiles, errors = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None)
-    runs = cp.load_profiles([zip_path]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([zip_path]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
 
     def rows(**kw):
         c, _files, _stats, review, asm, _ev = cp.compile_runs(runs, ext_map, soft, kw.get("unique", False), kw.get("pdf", "none"),
