@@ -16,5 +16,7 @@ services:
       PROFILER_WORKERS: "${PROFILER_WORKERS:-}"   # parallel reader threads; empty = auto
       PROFILER_TIER: "${PROFILER_TIER:-}"         # detail level 0/1/2 (also choosable on the page)
     read_only: true
+    tmpfs:
+      - /tmp          # the profiler keeps its listing cache in a temp folder; memory only
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]

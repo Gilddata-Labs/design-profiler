@@ -11,7 +11,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # ubuntu-22.04 pinned: ubuntu-latest (26.04) has no Python 3.9 build for setup-python
+        os: [ubuntu-22.04, windows-latest, macos-latest]
         python: ["3.9", "3.12"]
     runs-on: ${{ matrix.os }}
     steps:
@@ -54,7 +55,7 @@ jobs:
       - name: Run it sealed (read only folder, no network) on a sample folder
         run: |
           mkdir -p data/Proj output && printf 'x' > data/Proj/a.sldprt && chmod -R a+rX data && chmod a+rwx output
-          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
+          docker run --rm --network none --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges \
             -v "$PWD/data:/data:ro" -v "$PWD/output:/out" gilddesign:ci
           ls output | grep -q '^profile_'
 

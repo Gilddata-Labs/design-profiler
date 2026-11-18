@@ -17,7 +17,7 @@ docker image inspect "$IMAGE" >/dev/null 2>&1 || docker build -q -t "$IMAGE" .
 mkdir -p output
 SRC_ABS="$(cd "$SRC" && pwd -P)"
 docker run --rm \
-  --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
+  --network none --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges \
   --user "$(id -u):$(id -g)" \
   -v "$SRC_ABS:/data:ro" -v "$PWD/output:/out" \
   -e PROFILER_FOLDER_NAME="$(basename "$SRC_ABS")" \
