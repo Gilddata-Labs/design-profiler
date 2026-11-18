@@ -92,7 +92,7 @@ with tempfile.TemporaryDirectory() as t:
 with tempfile.TemporaryDirectory() as t:
     odd = os.path.join(t, "odd", "P")
     names = ["noext", "trailingdot.", "Mixed.CaSe", ".gitignore", "evil.=1+1", "at.@sum", "dash.-5", "comma,name.c,d", f'quote{Q}.q{Q}x',
-             "tab\there.txt", "long." + "x" * 120, "unicode.\u6570\u636e", "UPPER.DWG", "dup.dwg", "spaces.my ext"]
+             ("tab here.txt" if os.name == "nt" else "tab\there.txt"), "long." + "x" * 120, "unicode.\u6570\u636e", "UPPER.DWG", "dup.dwg", "spaces.my ext"]
     for n in names:
         put(odd, n, b"x" * 10)
     qz, _p, nfiles, _e = fp.quick_scan(os.path.join(t, "odd"), os.path.join(t, "q"), log=lambda *_: None)

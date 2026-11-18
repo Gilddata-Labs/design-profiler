@@ -13,6 +13,7 @@ def dxf(layouts):
     out.append("  0\nENDSEC\n  0\nEOF\n")
     return "".join(out).encode()
 with tempfile.TemporaryDirectory() as t:
+    t = os.path.realpath(t)   # Windows: 8.3 short temp name vs the long name the profiler uses
     root = os.path.join(t, "r"); out = os.path.join(t, "o")
     def put(rel, data, mtime=1_700_000_000):
         p = os.path.join(root, rel); os.makedirs(os.path.dirname(p), exist_ok=True); open(p, "wb").write(data); os.utime(p, (mtime, mtime))
@@ -22,7 +23,7 @@ with tempfile.TemporaryDirectory() as t:
     put("P5/plan.dxf", a, mtime=1_600_000_000)                                                   # same name and size, other date -> read
     opened = []; real_open = open
     def spy(f, *x, **k):
-        if isinstance(f, str) and f.startswith(root) and f.endswith(".dxf"): opened.append(os.path.relpath(f, root))
+        if isinstance(f, str) and os.path.normcase(f).startswith(os.path.normcase(root)) and f.lower().endswith(".dxf"): opened.append(os.path.relpath(f, root))
         return real_open(f, *x, **k)
     builtins.open = spy
     try:

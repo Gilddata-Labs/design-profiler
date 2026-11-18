@@ -17,6 +17,7 @@ check("and only to media / document / data classes (skp is the one native except
 check("skipped extensions never overlap the ones whose content is read (sheets, references)", fp.NO_HEAD_EXTS & (fp.SHEET_EXTS | fp.LINK_READ_EXTS), set())
 # end to end: a file of a skipped type is not opened, a CAD one is
 with tempfile.TemporaryDirectory() as t:
+    t = os.path.realpath(t)   # Windows: the temp folder is an 8.3 short name, the profiler uses the long one
     src = os.path.join(t, "r", "proj"); os.makedirs(src); out = os.path.join(t, "o")
     for n, data in (("a.jpg", b"\xff\xd8\xff" + b"0" * 50), ("b.pdf", b"%PDF-1.4" + b"0" * 50), ("c.step", b"ISO-10303-21;\nDATA;\nENDSEC;\n"), ("d.txt", b"hello"), ("e.png", b""), ("f.skp", b"1" * 40)):
         open(os.path.join(src, n), "wb").write(data)
@@ -24,7 +25,7 @@ with tempfile.TemporaryDirectory() as t:
     real_open = open
     import builtins
     def spy(file, *a, **k):
-        if isinstance(file, str) and file.startswith(src): opened.append(os.path.basename(file))
+        if isinstance(file, str) and os.path.normcase(file).startswith(os.path.normcase(src)): opened.append(os.path.basename(file))
         return real_open(file, *a, **k)
     builtins.open = spy
     try:

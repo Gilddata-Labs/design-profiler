@@ -26,12 +26,17 @@ check("budget from RAM is between 256 MB and 2 GB", 256 << 20 <= fp.memory_budge
 
 # ---- real peak memory: ten 100 MB 'drawings', ten workers
 CHILD = r'''
-import os, sys, resource
+import os, sys
 sys.path.insert(0, %r)
 import file_profiler as fp
 z = fp.profile(sys.argv[1], sys.argv[2], log=lambda *a: None, resume=False, system_info=False, workers=10)[0]
-div = 1 if sys.platform == "darwin" else 1024
-print(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / div / 1048576 if sys.platform == "darwin" else resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024)
+if sys.platform == "win32":
+    import sysmetrics
+    print(sysmetrics._win().peak_rss() / 1048576)
+else:
+    import resource
+    div = 1 if sys.platform == "darwin" else 1024
+    print(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / div / 1048576 if sys.platform == "darwin" else resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024)
 ''' % ROOT
 with tempfile.TemporaryDirectory() as t:
     src = os.path.join(t, "r", "P"); os.makedirs(src)

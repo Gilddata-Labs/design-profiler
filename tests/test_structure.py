@@ -156,15 +156,19 @@ with tempfile.TemporaryDirectory() as t:
     runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
     c, _f, _s, rev, *_x = cp.compile_runs(runs, ext_map, soft, False, "auto", False, "structure", 1)
     check("folded-in assembly is WARNED about (possible stale / library reference)", any("Beta.sldasm (inside Alpha)" in r[2] for r in rev), True)
+_can_lock = os.name != "nt" and not (hasattr(os, "geteuid") and os.geteuid() == 0)   # chmod 0 is a no-op on Windows and for root
+if not _can_lock:
+    print("skip an unreadable folder is reported (chmod cannot lock a folder on Windows or as root)")
 with tempfile.TemporaryDirectory() as t:
     src = os.path.join(t, "parent"); put(src, "P/ok/a.sldprt", "a"); put(src, "P/locked/b.sldprt", "b")
-    os.chmod(os.path.join(src, "P", "locked"), 0)
+    if _can_lock: os.chmod(os.path.join(src, "P", "locked"), 0)
     try:
         z, _np, nfiles, errs = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1)
         info = {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zopen(z).read("Run_info.csv").decode("utf-8-sig")))}
-        check("an unreadable folder is reported, not silently skipped", (info["unreadable_folders"], int(info["read_errors"]) >= 1), ("1", True))
+        if _can_lock:
+            check("an unreadable folder is reported, not silently skipped", (info["unreadable_folders"], int(info["read_errors"]) >= 1), ("1", True))
     finally:
-        os.chmod(os.path.join(src, "P", "locked"), 0o755)
+        if _can_lock: os.chmod(os.path.join(src, "P", "locked"), 0o755)
 # ---- determinism: the same data, profiled twice (different random folder ids), compiles to byte-identical output
 with tempfile.TemporaryDirectory() as t:
     src = os.path.join(t, "parent")

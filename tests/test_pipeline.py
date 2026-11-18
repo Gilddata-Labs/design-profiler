@@ -19,6 +19,7 @@ def run(root, out, k, **kw):
     fp.PIPELINE_CHUNKS = k
     return fp.profile(root, out, log=lambda *_: None, resume=kw.pop("resume", False), system_info=False, workers=8, chunk_files=7, **kw)[0]
 with tempfile.TemporaryDirectory() as t:
+    t = os.path.realpath(t)   # Windows: 8.3 short temp name vs the long name the profiler uses
     root = os.path.join(t, "data"); build(root)
     z1 = run(root, os.path.join(t, "k0"), 0); z4 = run(root, os.path.join(t, "k4"), 4)
     for n, drop in (("Files.csv", ("dir_id",)), ("Projects.csv", ()), ("Extensions.csv", ()), ("Links.csv", ()), ("Unreadable.csv", ())):
@@ -42,10 +43,10 @@ with tempfile.TemporaryDirectory() as t:
     slow = {"on": False}
     real_open, real_scandir = builtins.open, os.scandir
     def sopen(f, *a, **k):
-        if slow["on"] and isinstance(f, str) and f.startswith(root): time.sleep(0.05)
+        if slow["on"] and isinstance(f, str) and os.path.normcase(f).startswith(os.path.normcase(root)): time.sleep(0.05)
         return real_open(f, *a, **k)
     def sscan(p, *a, **k):
-        if slow["on"] and isinstance(p, str) and p.startswith(root): time.sleep(0.03)
+        if slow["on"] and isinstance(p, str) and os.path.normcase(p).startswith(os.path.normcase(root)): time.sleep(0.03)
         return real_scandir(p, *a, **k)
     builtins.open = sopen; os.scandir = sscan; slow["on"] = True
     try:
