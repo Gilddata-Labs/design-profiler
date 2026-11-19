@@ -1,5 +1,6 @@
 """Fusion 360 files: .f3d part, .f3z assembly, .f2d drawing, Fusion Electronics .fsch/.fbrd/.flbr; domain follows the software."""
 import os, sys, tempfile, zipfile
+os.environ.setdefault("PROFILER_NO_REVEAL", "1"); os.environ.setdefault("PROFILER_NO_BROWSER", "1")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 try:

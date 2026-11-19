@@ -1,6 +1,7 @@
 """Categorisation: extensions from real-world data, classification by file content for unknown extensions, Creo version suffixes,
 an honest report of what is still unmapped, and an Assembly Breakdown that is never empty.   Run: python tests/test_categorisation.py"""
 import csv, io, os, subprocess, sys, tempfile, zipfile
+os.environ.setdefault("PROFILER_NO_REVEAL", "1"); os.environ.setdefault("PROFILER_NO_BROWSER", "1")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 import file_profiler as fp

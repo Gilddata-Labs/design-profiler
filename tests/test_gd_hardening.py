@@ -92,6 +92,20 @@ with tempfile.TemporaryDirectory() as t:
         build_release.sha256, build_release.ROOT = real_sha, real_root
     check("a download with the wrong checksum is refused and removed", (refused, os.listdir(os.path.join(t, "dist"))), (True, [os.path.basename(path)]))
 
+# ---- the finished zip is revealed in Finder / Explorer only for a person at a terminal: never when output is captured
+import file_profiler as fp
+calls = []
+real_system = os.system
+os.system = lambda cmd: calls.append(cmd) or 0
+try:
+    os.environ.pop("PROFILER_NO_REVEAL", None)
+    fp.reveal("/nowhere/profile.zip")          # stdout is a pipe under the test runner
+    os.environ["PROFILER_NO_REVEAL"] = "1"
+    fp.reveal("/nowhere/profile.zip")
+finally:
+    os.system = real_system
+check("reveal opens no window without an interactive terminal or with PROFILER_NO_REVEAL", calls, [])
+
 # ---- the launchers and compose file name the image after the release version: catch drift when TOOL_VERSION is bumped
 import gd_version
 for name in ("run-docker.sh", "run-docker.bat", "docker-compose.yml"):

@@ -2402,7 +2402,14 @@ def ask_folder():
 
 
 def reveal(path):
-    if os.environ.get("PROFILER_IN_DOCKER"):
+    """Show the finished zip in Explorer / Finder. Only for a person at a terminal: never in Docker, CI, tests or
+    when the output is captured (PROFILER_NO_REVEAL=1 switches it off explicitly)."""
+    if os.environ.get("PROFILER_IN_DOCKER") or os.environ.get("PROFILER_NO_REVEAL") or os.environ.get("CI"):
+        return
+    try:
+        if not (sys.stdout.isatty() and sys.stdin.isatty()):
+            return
+    except Exception:
         return
     try:
         if sys.platform == "win32":

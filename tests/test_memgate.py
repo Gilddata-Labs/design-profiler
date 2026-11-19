@@ -1,6 +1,7 @@
 """Memory guard: the bytes of whole-file reads in flight never exceed the budget (an oversized file runs alone, nothing deadlocks), and a
 real run with many huge files stays far below the unguarded peak."""
 import os, subprocess, sys, tempfile, threading, time
+os.environ.setdefault("PROFILER_NO_REVEAL", "1"); os.environ.setdefault("PROFILER_NO_BROWSER", "1")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
 import file_profiler as fp
 bad = []

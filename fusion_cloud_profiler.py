@@ -428,7 +428,8 @@ def sign_in(client_id, base=API):
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     v6 = serve_ipv6_too(Once, REDIRECT_PORT)                  # `localhost` may mean ::1: answer there too
     print("Opening the browser to sign in to Autodesk (read-only access: data:read). If it does not open, copy this address:\n  " + url)
-    webbrowser.open(url)
+    if not os.environ.get("PROFILER_NO_BROWSER"):   # tests and CI set this; a person copies the address instead
+        webbrowser.open(url)
     done.wait(300)
     for sv in (srv, v6):
         if sv is not None:

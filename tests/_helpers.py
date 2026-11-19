@@ -1,7 +1,12 @@
 """Helpers shared by the test files. Windows refuses to delete a file that is still open, so the
 tests read result zips and workbooks into memory instead of keeping a handle on the file."""
 import io
+import os
 import zipfile
+
+# Tests must never open Finder, Explorer or a browser (the profiler reveals the finished zip and the Fusion sign-in opens a page).
+os.environ.setdefault("PROFILER_NO_REVEAL", "1")
+os.environ.setdefault("PROFILER_NO_BROWSER", "1")
 
 
 def zopen(path):

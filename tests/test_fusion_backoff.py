@@ -2,6 +2,7 @@
 answers that arrive together are one episode; speed comes back slowly; 403 'capacity' and 503 are 'slow down', a plain 403 is a permission error;
 a call is given up only after its patience, with a retryable error; ordinary failures keep their own budget."""
 import http.server, json, os, sys, threading, time
+os.environ.setdefault("PROFILER_NO_REVEAL", "1"); os.environ.setdefault("PROFILER_NO_BROWSER", "1")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
 import fusion_cloud_profiler as fc
 bad = []
