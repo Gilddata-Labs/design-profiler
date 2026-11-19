@@ -70,23 +70,29 @@ jobs:
       - name: Build the bundle
         run: python tools/build_release.py --windows
       - name: Unpack it and run the profiler with the bundled Python only
-        shell: cmd
+        shell: pwsh
         run: |
-          mkdir bundle && tar -xf dist\gilddesign-*-supplier-windows.zip -C bundle
-          for /d %%d in (bundle\gilddesign-*) do set APP=%%d
-          mkdir smoke\Proj && echo ISO-10303-21; > smoke\Proj\a.step
-          %APP%\python\python.exe %APP%\gilddesign.py --version
-          %APP%\python\python.exe %APP%\gilddesign.py check smoke --out smoke_out --seconds 5
-          %APP%\python\python.exe %APP%\gilddesign.py quick smoke --out smoke_out
-          %APP%\python\python.exe %APP%\gilddesign.py extract smoke --out smoke_out
-          dir smoke_out
+          $zip = Get-ChildItem dist\*-supplier-windows.zip | Select-Object -First 1
+          Expand-Archive $zip.FullName -DestinationPath bundle
+          $app = (Get-ChildItem bundle -Directory | Select-Object -First 1).FullName
+          New-Item -ItemType Directory -Force smoke\Proj | Out-Null
+          Set-Content smoke\Proj\a.step "ISO-10303-21;"
+          & "$app\python\python.exe" "$app\gilddesign.py" --version
+          & "$app\python\python.exe" "$app\gilddesign.py" check smoke --out smoke_out --seconds 5
+          & "$app\python\python.exe" "$app\gilddesign.py" quick smoke --out smoke_out
+          & "$app\python\python.exe" "$app\gilddesign.py" extract smoke --out smoke_out
+          Get-ChildItem smoke_out
+          if (-not (Get-ChildItem smoke_out -Filter "profile_*.zip")) { throw "no profile zip from the bundled Python" }
       - name: run.bat uses the bundled Python (no Python on PATH)
-        shell: cmd
+        shell: pwsh
         run: |
-          for /d %%d in (bundle\gilddesign-*) do set APP=%%d
-          set PATH=C:\Windows\System32
-          cd %APP% && echo. | call run.bat ..\..\smoke --out ..\..\smoke_bat
-          dir ..\..\smoke_bat
+          $app = (Get-ChildItem bundle -Directory | Select-Object -First 1).FullName
+          $env:PATH = "C:\Windows\System32;C:\Windows"
+          $smoke = (Resolve-Path smoke).Path
+          Set-Location $app
+          cmd /c "echo. | run.bat `"$smoke`" --out `"$smoke\..\smoke_bat`""
+          Get-ChildItem ..\..\smoke_bat
+          if (-not (Get-ChildItem ..\..\smoke_bat -Filter "profile_*.zip")) { throw "run.bat did not produce a profile zip" }
 
   release:
     needs: [tests, docker, windows-bundle]

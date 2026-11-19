@@ -709,18 +709,30 @@ CHUNK_FILES = 5000           # files per checkpoint: after a crash at most this 
 _TEST_HOOK = None            # tests set this to a callable(unit_index, chunk_index) to simulate a crash after a chunk is saved
 
 
+
+def _replace(src, dst, tries=10, wait=0.2):
+    """os.replace that waits out a short refusal on Windows (indexer, antivirus or a closing handle on dst)."""
+    for i in range(tries):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if i == tries - 1 or sys.platform != "win32":
+                raise
+            time.sleep(wait)
+
 def _save_json(path, obj):
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(obj, f)
-    os.replace(tmp, path)
+    _replace(tmp, path)
 
 
 def _write_csv_atomic(path, rows):
     tmp = path + ".tmp"
     with open(tmp, "w", newline="", encoding="utf-8") as f:
         csv.writer(f, lineterminator="\r\n").writerows(rows)
-    os.replace(tmp, path)
+    _replace(tmp, path)
 
 
 def resolve_units(root, folders, label, project_depth):
@@ -2244,7 +2256,7 @@ def profile(root, out_dir, log=print, label=None, folders=None, workers=None, pr
         log_files["System_info.csv"] = ("﻿" + buf.getvalue()).encode("utf-8")
         for name, data in log_files.items():
             z.writestr(name, data)
-    os.replace(tmp_zip, zip_path)
+    _replace(tmp_zip, zip_path)
     with zipfile.ZipFile(stats_zip, "w", zipfile.ZIP_DEFLATED) as z:
         for name, data in log_files.items():
             z.writestr(name, data)

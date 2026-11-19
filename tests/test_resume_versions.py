@@ -1,5 +1,6 @@
 """A new version of the tool carries on from the saved progress of an older one (nothing finished is redone), the output says which versions worked
 on the run and which projects each profiled, progress in another STATE_FORMAT is not reused, and a changed setting still starts afresh."""
+import time
 import csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
 from _helpers import zopen, wopen  # noqa: E402
@@ -69,7 +70,13 @@ with tempfile.TemporaryDirectory() as t:
     man = json.load(open(mp)); cfg = json.loads(man["cfg"]); cfg.pop("fmt"); cfg["v"] = "1.7"
     man["cfg"] = json.dumps(cfg, sort_keys=True); man.pop("versions")
     for u in man["units"].values(): u.pop("vs", None)
-    json.dump(man, open(mp, "w")); legacy = "legacy0000000000"; os.rename(os.path.join(rdir, old_id), os.path.join(rdir, legacy))
+    json.dump(man, open(mp, "w")); legacy = "legacy0000000000"
+    for _try in range(10):   # Windows: a handle from the simulated crash may still be closing; retry the rename briefly
+        try:
+            os.rename(os.path.join(rdir, old_id), os.path.join(rdir, legacy)); break
+        except PermissionError:
+            if _try == 9: raise
+            time.sleep(0.3)
     CALLS[0] = 0; z = run(src, out4); info = info_of(z)
     if fp.STATE_FORMAT == 1:
         check("progress saved by the real 1.7 (old identity) is picked up and carried on", (CALLS[0] < total, rows_of(z) == base_rows), (True, True))
