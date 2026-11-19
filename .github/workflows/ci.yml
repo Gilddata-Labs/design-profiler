@@ -35,6 +35,8 @@ jobs:
           if [ -n "$failed" ]; then echo "FAILED:$failed"; exit 1; fi
       - name: Smoke test the command line on this OS
         shell: bash
+        env:
+          GILDDESIGN_EDITION: internal   # a checkout is the supplier edition; verify and catalogue need the internal one
         run: |
           mkdir -p smoke/Proj && printf 'ISO-10303-21;\nHEADER;\nFILE_NAME(%s);\nENDSEC;\n' "'a','',(''),(''),'','SolidWorks',''" > smoke/Proj/a.step
           python gilddesign.py check smoke --out smoke_out --seconds 5

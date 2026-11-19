@@ -7,6 +7,7 @@ import zipfile
 # Tests must never open Finder, Explorer or a browser (the profiler reveals the finished zip and the Fusion sign-in opens a page).
 os.environ.setdefault("PROFILER_NO_REVEAL", "1")
 os.environ.setdefault("PROFILER_NO_BROWSER", "1")
+os.environ.setdefault("GILDDESIGN_EDITION", "internal")   # the tests cover the internal commands too
 
 
 def zopen(path):

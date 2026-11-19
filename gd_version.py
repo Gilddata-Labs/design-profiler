@@ -3,8 +3,10 @@
 The profiling engine underneath is the Folder Profiler (data847/folder-profiler, upstream commit in UPSTREAM_COMMIT). This file names
 OUR release; file_profiler.VERSION stays the engine version so profiles remain comparable with upstream ones.
 
-Edition: "internal" (GildData: compile, compare, buyer templates, scoring) or "supplier" (what sellers run: check, quick, extract,
-cloud, ui). The release builder writes the word into the file EDITION; a checkout with no EDITION file is internal.
+Edition: "internal" (GildData: compile, compare, verify, catalogue, scoring) or "supplier" (what sellers run: check, quick, extract,
+cloud, ui). The release builder writes the word into the file EDITION. A checkout of the repository has no EDITION file and is the
+supplier edition, so a seller who clones it gets exactly the seller commands; GildData staff set GILDDESIGN_EDITION=internal (or
+create a file EDITION containing "internal", which git ignores).
 """
 import os
 
@@ -21,9 +23,12 @@ def edition():
     try:
         with open(os.path.join(HERE, "EDITION"), encoding="utf-8") as f:
             word = f.read().strip().lower()
-        return word if word in ("internal", "supplier") else "internal"
+        if word in ("internal", "supplier"):
+            return word
     except OSError:
-        return "internal"
+        pass
+    env = os.environ.get("GILDDESIGN_EDITION", "").strip().lower()
+    return env if env in ("internal", "supplier") else "supplier"
 
 
 def upstream_commit():

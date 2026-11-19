@@ -2,7 +2,7 @@
 Run: python3 tests/test_gd.py   (optional env GD_UPSTREAM=/path/to/data847/folder-profiler for the parity test against upstream)"""
 import json
 import os
-os.environ.setdefault("PROFILER_NO_REVEAL", "1"); os.environ.setdefault("PROFILER_NO_BROWSER", "1")
+os.environ.setdefault("PROFILER_NO_REVEAL", "1"); os.environ.setdefault("PROFILER_NO_BROWSER", "1"); os.environ.setdefault("GILDDESIGN_EDITION", "internal")
 import shutil
 import subprocess
 import sys

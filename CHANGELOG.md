@@ -11,7 +11,8 @@ The first release built and tested from GildData's GitHub, ready for sellers.
 - Every command checks that the output folder can be written and says so plainly instead of a traceback (read only folder, path that is a file).
 - The sealed Docker container and the seller launchers mount a memory only `/tmp` for the listing cache (the 0.3.0 launchers failed on a read only container).
 - The compiler lives in `profile-compile/`.
-- Customer README; the engine's own documentation moved to `docs/ENGINE.md`.
+- Sellers run from the repository itself: a checkout with no `EDITION` file is the seller edition (check, quick, extract, cloud, ui); GildData switches the internal commands on with `GILDDESIGN_EDITION=internal` or a local `EDITION` file (git ignored). Before, a checkout was the internal edition.
+- README written around cloning or downloading the repository, with what to send when something fails; the engine's own documentation moved to `docs/ENGINE.md`.
 
 ## 0.3.0
 

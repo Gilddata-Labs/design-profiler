@@ -92,6 +92,15 @@ with tempfile.TemporaryDirectory() as t:
         build_release.sha256, build_release.ROOT = real_sha, real_root
     check("a download with the wrong checksum is refused and removed", (refused, os.listdir(os.path.join(t, "dist"))), (True, [os.path.basename(path)]))
 
+# ---- a plain checkout is the seller edition; GildData opts in with GILDDESIGN_EDITION or an EDITION file
+env_plain = {k: v for k, v in os.environ.items() if k != "GILDDESIGN_EDITION"}
+r = subprocess.run([sys.executable, os.path.join(ROOT, "gilddesign.py"), "--version"], capture_output=True, text=True, env=env_plain)
+check("checkout without EDITION file reports the supplier edition", "(supplier)" in r.stdout and not os.path.exists(os.path.join(ROOT, "EDITION")), True)
+r = subprocess.run([sys.executable, os.path.join(ROOT, "gilddesign.py"), "catalogue", "x"], capture_output=True, text=True, env=env_plain)
+check("and refuses the internal commands", (r.returncode, "internal edition" in r.stdout + r.stderr), (2, True))
+r = subprocess.run([sys.executable, os.path.join(ROOT, "gilddesign.py"), "--version"], capture_output=True, text=True, env={**env_plain, "GILDDESIGN_EDITION": "internal"})
+check("GILDDESIGN_EDITION=internal switches the internal commands on", "(internal)" in r.stdout, True)
+
 # ---- the finished zip is revealed in Finder / Explorer only for a person at a terminal: never when output is captured
 import file_profiler as fp
 calls = []
