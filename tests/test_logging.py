@@ -4,6 +4,7 @@ import os as _os, tempfile as _tf; _os.environ["PROFILER_NAME_KEY_FILE"] = _os.p
 import csv, http.server, io, json, os, shutil, sys, tempfile, threading, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 import fusion_cloud_profiler as fc
 import diag
@@ -11,7 +12,7 @@ import diag
 bad = []
 def check(label, got, want):
     ok = got == want; print(("ok   " if ok else "FAIL ") + f"{label}: {got}" + ("" if ok else f"   (wanted {want})")); bad.append(not ok)
-rd = lambda z, n: list(csv.DictReader(io.StringIO(zipfile.ZipFile(z).read(n).decode("utf-8-sig"))))
+rd = lambda z, n: list(csv.DictReader(io.StringIO(zopen(z).read(n).decode("utf-8-sig"))))
 info = lambda z: {r["key"]: r["value"] for r in rd(z, "Run_info.csv")}
 def put(base, rel, body=b"x"):
     path = os.path.join(base, rel); os.makedirs(os.path.dirname(path), exist_ok=True); open(path, "wb").write(body)
@@ -42,7 +43,7 @@ with tempfile.TemporaryDirectory() as t:
     if can_chmod:
         put(src, "P/secret.dwg", b"AC1032" + b"\0" * 50); lock(os.path.join(src, "P", "secret.dwg"))
     z, *_ = fp.profile(src, os.path.join(t, "o"), workers=2, system_info=False, tier=2, **quiet)
-    names = zipfile.ZipFile(z).namelist()
+    names = zopen(z).namelist()
     check("Read_Problems.csv exists when a file could not be fully read", "Read_Problems.csv" in names, True)
     rp = rd(z, "Read_Problems.csv")
     files = {r["file_no"]: r for r in rd(z, "Files.csv")}
@@ -61,7 +62,7 @@ with tempfile.TemporaryDirectory() as t:
     # no problems -> no file
     src2 = os.path.join(t, "clean"); put(src2, "P/a.sldprt", b"ok")
     z2, *_ = fp.profile(src2, os.path.join(t, "o2"), workers=1, system_info=False, tier=1, **quiet)
-    check("a clean run has no Read_Problems.csv and counts 0", ("Read_Problems.csv" in zipfile.ZipFile(z2).namelist(), info(z2)["read_problems_listed"]), (False, "0"))
+    check("a clean run has no Read_Problems.csv and counts 0", ("Read_Problems.csv" in zopen(z2).namelist(), info(z2)["read_problems_listed"]), (False, "0"))
 
     # anonymised names: the problem list carries codes, not project names
     z3, *_ = fp.profile(src, os.path.join(t, "o3"), workers=2, system_info=False, tier=2, anonymize_names=True, name_map=False, **quiet)
@@ -87,7 +88,7 @@ if can_chmod:
         src = os.path.join(t, "data")
         put(src, "A/x/f.txt", b"x"); put(src, "A/y/f.txt", b"x"); lock(os.path.join(src, "A", "y"))
         qz, *_ = fp.quick_scan(src, os.path.join(t, "q"), project_depth=3, **quiet)
-        check("a folder that cannot even be listed when choosing projects is reported (quick)", [r["where"] for r in rd(qz, "Setup_Warnings.csv")] if "Setup_Warnings.csv" in zipfile.ZipFile(qz).namelist() else [], ["project folders"])
+        check("a folder that cannot even be listed when choosing projects is reported (quick)", [r["where"] for r in rd(qz, "Setup_Warnings.csv")] if "Setup_Warnings.csv" in zopen(qz).namelist() else [], ["project folders"])
         unlock_all(src)
 
 # ---------------------------------------------------------------- a corrupt saved-progress file is no longer ignored silently
@@ -177,13 +178,13 @@ except fc.ApiError as e:
 with tempfile.TemporaryDirectory() as t:
     api2 = fc.Api("tok", base)
     path, n, np_, stats = fc.run(api2, "b.hub1", "Hub", t, quiet=True)
-    z = zipfile.ZipFile(path)
+    z = zopen(path)
     check("zip contains Run_log.csv with start, project and finish lines", {"start", "project", "finish"} <= {r["phase"] for r in rd(path, "Run_log.csv")}, True)
     check("the unreadable folder's reason is in the log and in Unreadable.csv", (any("no access to this folder" in r["message"] for r in rd(path, "Run_log.csv")),
           [u["reason"].count("403") > 0 for u in rd(path, "Unreadable.csv")]), (True, [True]))
     check("Run_info reports the log size", info(path)["log_events"] != "0", True)
     sz = stats["stats_zip"]
-    sn = zipfile.ZipFile(sz).namelist()
+    sn = zopen(sz).namelist()
     check("a separate run-statistics zip is written next to the profile zip", (os.path.dirname(sz) == os.path.dirname(path), sorted(sn)), (True, ["README.txt", "Run_log.csv", "Run_stats.csv"]))
     st = {r["key"]: r["value"] for r in rd(sz, "Run_stats.csv")}
     check("it carries the same log and counters", (len(rd(sz, "Run_log.csv")) == len(rd(path, "Run_log.csv")), st["unreadable_folders"], int(st["log_errors"]) >= 1), (True, "1", True))

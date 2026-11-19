@@ -2,7 +2,8 @@
 Run: python tests/test_domain_sheets.py     (TEMPLATE_XLSX=<path> also compares the headings with the real template)"""
 import datetime, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
+from _helpers import zopen, wopen  # noqa: E402
 try:
     import compile_profiles as cp
     import domain_metrics as dm
@@ -78,7 +79,7 @@ E2 = P("E2").add("amp.sch", 4000, sig="EDA:Eagle").add("amp.brd", 6000, sig="EDA
 
 with tempfile.TemporaryDirectory() as t:
     zp = os.path.join(t, "vendor.zip"); zipit([M1, M2, A1, A2, A3, A4, E1, E2], zp)
-    em, sf = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    em, sf = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     compiled, _f, stats, review, asm, ev = cp.compile_runs(cp.load_profiles([zp]), em, sf, False, "auto", True, "folder")
     sheets = ev["domain_sheets"]
     def cell(sheet, proj, col):
@@ -89,7 +90,7 @@ with tempfile.TemporaryDirectory() as t:
     tpl = os.environ.get("TEMPLATE_XLSX")
     if tpl:
         import openpyxl
-        wb = openpyxl.load_workbook(tpl)
+        wb = wopen(tpl)
         check("headings equal the real template, character for character", [[c.value for c in wb[s][1]] for s in ("Mechanical", "Architecture", "Electronics")], [dm.MECH_HEADINGS, dm.ARCH_HEADINGS, dm.ELEC_HEADINGS])
     check("each project is in the sheet of its own domain", {s: [r[0] for r in rows] for s, rows in sheets.items()},
           {"Mechanical": ["M1", "M2"], "Architecture": ["A1", "A2", "A3", "A4"], "Electronics": ["E1", "E2"]})

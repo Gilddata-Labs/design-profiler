@@ -710,7 +710,7 @@ def main(argv=None, open_browser=True):
         fcp.serve_ipv6_too(Handler, srv.server_address[1])          # `localhost` may mean ::1: answer there too
     url = f"http://127.0.0.1:{srv.server_address[1]}/"
     print(f"Folder Profiler UI: {url}\n(this computer only; press Ctrl+C or close this window to stop)")
-    if open_browser and not IN_DOCKER:
+    if open_browser and not IN_DOCKER and not os.environ.get("PROFILER_NO_BROWSER"):
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
     try:
         srv.serve_forever()

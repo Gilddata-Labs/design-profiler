@@ -1,12 +1,14 @@
 """Step 1 - the quick count: same numbers as the full profile, but no file is opened.   Run: python tests/test_quick.py"""
 import builtins, csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
+from _helpers import zopen, wopen, under, plain  # noqa: E402
+Q = "'" if os.name == "nt" else '"'   # a quote in a file name: Windows forbids the double one
 import file_profiler as fp
 bad = []
 def check(label, got, want):
     ok = got == want; print(("ok   " if ok else "FAIL ") + f"{label}: {got}" + ("" if ok else f"   (wanted {want})")); bad.append(not ok)
-rd = lambda z, n: list(csv.DictReader(io.StringIO(zipfile.ZipFile(z).read(n).decode("utf-8-sig"))))
+rd = lambda z, n: list(csv.DictReader(io.StringIO(zopen(z).read(n).decode("utf-8-sig"))))
 def put(base, rel, body=b"x"):
     path = os.path.join(base, rel); os.makedirs(os.path.dirname(path), exist_ok=True); open(path, "wb").write(body)
 
@@ -79,7 +81,7 @@ with tempfile.TemporaryDirectory() as t:
     except ImportError:
         print("SKIP - compiler not present")
     else:
-        em, sf = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+        em, sf = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
         out = cp.Path(t) / "qc"; out.mkdir()
         check("quick zip is recognised, a full profile zip is not", (cp.is_quick_zip(qz), cp.is_quick_zip(fz)), (True, False))
         np_, nf, cls_rows = cp.compile_quick([qz], em, sf, out)
@@ -89,25 +91,25 @@ with tempfile.TemporaryDirectory() as t:
 # ---- unexpected extensions never break the count, and never become spreadsheet formulas
 with tempfile.TemporaryDirectory() as t:
     odd = os.path.join(t, "odd", "P")
-    names = ["noext", "trailingdot.", "Mixed.CaSe", ".gitignore", "evil.=1+1", "at.@sum", "dash.-5", "comma,name.c,d", 'quote".q"x',
-             "tab\there.txt", "long." + "x" * 120, "unicode.\u6570\u636e", "UPPER.DWG", "dup.dwg", "spaces.my ext"]
+    names = ["noext", "trailingdot.", "Mixed.CaSe", ".gitignore", "evil.=1+1", "at.@sum", "dash.-5", "comma,name.c,d", f'quote{Q}.q{Q}x',
+             ("tab here.txt" if os.name == "nt" else "tab\there.txt"), "long." + "x" * 120, "unicode.\u6570\u636e", "UPPER.DWG", "dup.dwg", "spaces.my ext"]
     for n in names:
         put(odd, n, b"x" * 10)
     qz, _p, nfiles, _e = fp.quick_scan(os.path.join(t, "odd"), os.path.join(t, "q"), log=lambda *_: None)
     allx = {r["ext"]: int(r["file_count"]) for r in rd(qz, "Extensions_All.csv")}
     check("every odd file is counted (none lost, none crash)", (nfiles, sum(allx.values())), (len(names), len(names)))
     check("no extension -> (none); trailing dot -> (none); case folded; dotfile -> (none)", (allx["(none)"], allx["case"], allx["dwg"]), (3, 1, 2))
-    check("commas, quotes, long and unicode extensions survive the CSV", ("c,d" in allx, 'q"x' in allx, "x" * 120 in allx, "\u6570\u636e" in allx), (True,) * 4)
+    check("commas, quotes, long and unicode extensions survive the CSV", ("c,d" in allx, f"q{Q}x" in allx, "x" * 120 in allx, "\u6570\u636e" in allx), (True,) * 4)
     try:
         import compile_profiles as cp
     except ImportError:
         cp = None
     if cp is not None and cp.Workbook:
         import openpyxl
-        em, sf = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+        em, sf = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
         out = cp.Path(t) / "oc"; out.mkdir()
         cp.compile_quick([qz], em, sf, out)
-        ws = openpyxl.load_workbook(out / "quick_count.xlsx")["By Extension"]
+        ws = wopen(out / "quick_count.xlsx")["By Extension"]
         cells = {c.value: c for c in (r[0] for r in ws.iter_rows(min_row=2))}
         check("'=1+1' is stored as text, not as a formula", (cells["=1+1"].data_type, cells["=1+1"].value), ("s", "=1+1"))
         txt = open(out / "Quick_By_Extension.csv", encoding="utf-8-sig").read()

@@ -2,12 +2,13 @@
 time, a crash with chunks in flight must resume to the same result (only the unsaved window is redone), and the overlap must really save time."""
 import builtins, csv, io, os, shutil, sys, tempfile, time, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen, under, plain  # noqa: E402
 import file_profiler as fp
 bad = []
 def check(l, g, w):
     ok = g == w; print(("ok   " if ok else "FAIL ") + f"{l}: {g}" + ("" if ok else f" (wanted {w})")); bad.append(not ok)
 def rows(z, n, drop=()):
-    return [{k: v for k, v in r.items() if k not in drop} for r in csv.DictReader(io.StringIO(zipfile.ZipFile(z).read(n).decode("utf-8-sig")))]
+    return [{k: v for k, v in r.items() if k not in drop} for r in csv.DictReader(io.StringIO(zopen(z).read(n).decode("utf-8-sig")))]
 def build(root, projects=4, files=60):
     for p in range(projects):
         for f in range(files):
@@ -18,6 +19,7 @@ def run(root, out, k, **kw):
     fp.PIPELINE_CHUNKS = k
     return fp.profile(root, out, log=lambda *_: None, resume=kw.pop("resume", False), system_info=False, workers=8, chunk_files=7, **kw)[0]
 with tempfile.TemporaryDirectory() as t:
+    t = os.path.realpath(t)   # Windows: 8.3 short temp name vs the long name the profiler uses
     root = os.path.join(t, "data"); build(root)
     z1 = run(root, os.path.join(t, "k0"), 0); z4 = run(root, os.path.join(t, "k4"), 4)
     for n, drop in (("Files.csv", ("dir_id",)), ("Projects.csv", ()), ("Extensions.csv", ()), ("Links.csv", ()), ("Unreadable.csv", ())):
@@ -41,10 +43,10 @@ with tempfile.TemporaryDirectory() as t:
     slow = {"on": False}
     real_open, real_scandir = builtins.open, os.scandir
     def sopen(f, *a, **k):
-        if slow["on"] and isinstance(f, str) and f.startswith(root): time.sleep(0.05)
+        if slow["on"] and isinstance(f, (str, bytes)) and under(f, root): time.sleep(0.05)
         return real_open(f, *a, **k)
     def sscan(p, *a, **k):
-        if slow["on"] and isinstance(p, str) and p.startswith(root): time.sleep(0.03)
+        if slow["on"] and isinstance(p, (str, bytes)) and under(p, root): time.sleep(0.03)
         return real_scandir(p, *a, **k)
     builtins.open = sopen; os.scandir = sscan; slow["on"] = True
     try:

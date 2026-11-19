@@ -3,13 +3,15 @@ of the profile equals the one made with the listing read again, on a tree with l
 loose files, different detail levels and project depths. Folders with errors are listed live; a restarted run never uses an old snapshot."""
 import collections, csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
+Q = "'" if os.name == "nt" else '"'   # a quote in a file name: Windows forbids the double one
 import file_profiler as fp
 bad = []
 def check(l, g, w):
     ok = g == w; print(("ok   " if ok else "FAIL ") + f"{l}: {g}" + ("" if ok else f" (wanted {w})")); bad.append(not ok)
 def tables(z):
     out = {}
-    zf = zipfile.ZipFile(z)
+    zf = zopen(z)
     for n in sorted(zf.namelist()):
         if not n.endswith(".csv") or n.startswith("Run_") or n in ("System_info.csv", "Dirs.csv"):
             continue
@@ -18,12 +20,12 @@ def tables(z):
     rows = list(csv.DictReader(io.StringIO(zf.read("Dirs.csv").decode("utf-8-sig"))))
     out["Dirs.csv"] = sorted((r["project"], r["depth"], r.get("name", "")) for r in rows)
     return out
-def info(z): return {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zipfile.ZipFile(z).read("Run_info.csv").decode("utf-8-sig")))}
+def info(z): return {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zopen(z).read("Run_info.csv").decode("utf-8-sig")))}
 def mk(path, size, mt=1_700_000_000):
     os.makedirs(os.path.dirname(path), exist_ok=True); open(path, "wb").write(b"x" * size); os.utime(path, (mt, mt))
 with tempfile.TemporaryDirectory() as t:
     src = os.path.join(t, "src")
-    names = ["a.dwg", "B.dwg", "b.dwg", "Z.pdf", "ünï.txt", "x y.sldprt", "ñ.step", "a,b.dxf", 'q"r.txt', "a.b.c.dwg", "part.prt.7", "UPPER.DWG"]
+    names = ["a.dwg", "B.dwg", "b.dwg", "Z.pdf", "ünï.txt", "x y.sldprt", "ñ.step", "a,b.dxf", f'q{Q}r.txt', "a.b.c.dwg", "part.prt.7", "UPPER.DWG"]
     for p in range(4):
         for d in ("", "sub", "Sub", "sub/deep/er", "zz"):
             for i, nme in enumerate(names):

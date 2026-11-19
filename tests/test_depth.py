@@ -2,12 +2,13 @@
 import csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 
 bad = []
 def check(label, got, want):
     ok = got == want; print(("ok   " if ok else "FAIL ") + f"{label}: {got}" + ("" if ok else f"   (wanted {want})")); bad.append(not ok)
-rd = lambda z, n: list(csv.DictReader(io.StringIO(zipfile.ZipFile(z).read(n).decode("utf-8-sig"))))
+rd = lambda z, n: list(csv.DictReader(io.StringIO(zopen(z).read(n).decode("utf-8-sig"))))
 
 with tempfile.TemporaryDirectory() as t:
     deep = os.path.join(t, "data", "Proj")

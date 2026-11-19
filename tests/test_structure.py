@@ -2,7 +2,8 @@
 Run: python tests/test_structure.py"""
 import csv, io, os, struct, sys, tempfile, zipfile, zlib
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 try:
     import compile_profiles as cp
@@ -35,7 +36,7 @@ with tempfile.TemporaryDirectory() as t:
     P("B/p4.sldprt", "p4 data"); P("B/gear.sldprt", "same gear"); P("B/bolt.sldprt", "bolt-from-B-longer"); P("B/orphan.sldprt", "orphan data")
     P("Lib/lib.sldprt", "library part")                              # shared by A and B
     z, *_ = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1, tier=2)
-    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     compiled, _f, _s, review, asm, ev = cp.compile_runs(runs, ext_map, soft, False, "auto", True)
     rows = {r[1]: r for r in asm}
     check("three assemblies", sorted(rows), ["A.sldasm", "B.sldasm", "Sub.sldasm"])
@@ -76,7 +77,7 @@ with tempfile.TemporaryDirectory() as t:
     src = os.path.join(t, "parent")
     put(src, "Q/C/C.sldasm", sw_file(["bolt.sldprt"])); put(src, "Q/X/bolt.sldprt", "bolt version one"); put(src, "Q/Y/bolt.sldprt", "bolt version TWO!!")
     z, *_ = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1, tier=2)
-    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     *_x, ev = cp.compile_runs(runs, ext_map, soft, False, "auto", True)
     check("equidistant differing copies -> ambiguous reference counted", (ev["projects"][0]["refs_ambiguous"], ev["projects"][0]["refs_resolved"]), (1, 1))
 # ---- split: a neutral file named like a part follows the NEAREST same-named part, not the first root that claimed the name
@@ -85,13 +86,13 @@ with tempfile.TemporaryDirectory() as t:
     put(src, "S/R1/R1.sldasm", sw_file(["m.sldprt"])); put(src, "S/R1/m.sldprt", "model one")
     put(src, "S/R2/R2.sldasm", sw_file(["m.sldprt"])); put(src, "S/R2/m.sldprt", "model 2 longer"); put(src, "S/R2/m.step", "ISO-10303-21;\nEND-ISO-10303-21;\n")
     z, *_ = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1, tier=2)
-    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     c, *_x = cp.compile_runs(runs, ext_map, soft, False, "auto", False, "structure", 1)
     got = {r[0]: r[8] for r in c}                          # Neutral 3D Files per sub-project
     check("split: neutral file lands in the group of its nearest same-named part", got, {"S / R1": 0, "S / R2": 1})
 # ---- defaults of the command line: structure split + assembly breakdown ON; each can be turned off; guard on poor resolution
 import subprocess
-SCRIPT = os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "compile_profiles.py")
+SCRIPT = os.path.join(ROOT, "profile-compile", "scripts", "compile_profiles.py")
 def cli(zip_path, *flags):
     out = tempfile.mkdtemp()
     r = subprocess.run([sys.executable, SCRIPT, zip_path, "--out", out, *flags], capture_output=True, text=True)
@@ -119,7 +120,7 @@ with tempfile.TemporaryDirectory() as t:
     src = os.path.join(t, "parent")
     put(src, "P/Top.sldasm", sw_file(["a.sldprt", "ISO Draft.dft", "Template Sheet.dft"])); put(src, "P/a.sldprt", "part a")
     z, *_ = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1, tier=2)
-    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     *_x, ev = cp.compile_runs(runs, ext_map, soft, False, "auto", True)
     e = ev["projects"][0]
     check("references to drawings/templates are ignored: 1 real reference, resolved, High confidence", (e["refs_total"], e["refs_resolved"], e["confidence"]), (1, 1, "High"))
@@ -130,7 +131,7 @@ with tempfile.TemporaryDirectory() as t:
     put(src, "P/A/A.sldasm", sw_file(["g.sldprt", "R1.sldprt"])); put(src, "P/A/g.sldprt", "g"); put(src, "P/A/R1.sldprt", "rr")
     put(src, "Q/Gear.sldasm", sw_file(["Gear.sldprt", "bolt.sldprt"])); put(src, "Q/Gear.sldprt", "gp"); put(src, "Q/bolt.sldprt", "b")
     z, *_ = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1, tier=2)
-    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     *_x, ev = cp.compile_runs(runs, ext_map, soft, False, "auto", True)
     e = {x["project"]: x for x in ev["projects"]}
     check("a part named only 'R1' no longer breaks linking for the whole project", (e["P"]["parts_link"], e["P"]["parts"]), (2, 2))
@@ -142,7 +143,7 @@ with tempfile.TemporaryDirectory() as t:
     put(src, "P/Y/Y.sldasm", sw_file(["X.sldasm", "y.sldprt"])); put(src, "P/Y/y.sldprt", "yy")
     put(src, "P/Z/Z.sldasm", sw_file(["z.sldprt"])); put(src, "P/Z/z.sldprt", "zzz")
     z, *_ = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1, tier=2)
-    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     c, *_x = cp.compile_runs(runs, ext_map, soft, False, "auto", False, "structure", 1)
     check("mutually referencing assemblies form ONE project; independent Z is separate", sorted(x[0] for x in c), ["P / X", "P / Z"])
 with tempfile.TemporaryDirectory() as t:
@@ -152,18 +153,22 @@ with tempfile.TemporaryDirectory() as t:
     for n, body in (("b1", "x1"), ("b2", "x22"), ("b3", "x333")): put(src, f"P/Beta/{n}.sldprt", body)
     put(src, "P/Gamma/Gamma.sldasm", sw_file(["c.sldprt"])); put(src, "P/Gamma/c.sldprt", "cccc")
     z, *_ = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1, tier=2)
-    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     c, _f, _s, rev, *_x = cp.compile_runs(runs, ext_map, soft, False, "auto", False, "structure", 1)
     check("folded-in assembly is WARNED about (possible stale / library reference)", any("Beta.sldasm (inside Alpha)" in r[2] for r in rev), True)
+_can_lock = os.name != "nt" and not (hasattr(os, "geteuid") and os.geteuid() == 0)   # chmod 0 is a no-op on Windows and for root
+if not _can_lock:
+    print("skip an unreadable folder is reported (chmod cannot lock a folder on Windows or as root)")
 with tempfile.TemporaryDirectory() as t:
     src = os.path.join(t, "parent"); put(src, "P/ok/a.sldprt", "a"); put(src, "P/locked/b.sldprt", "b")
-    os.chmod(os.path.join(src, "P", "locked"), 0)
+    if _can_lock: os.chmod(os.path.join(src, "P", "locked"), 0)
     try:
         z, _np, nfiles, errs = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1)
-        info = {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zipfile.ZipFile(z).read("Run_info.csv").decode("utf-8-sig")))}
-        check("an unreadable folder is reported, not silently skipped", (info["unreadable_folders"], int(info["read_errors"]) >= 1), ("1", True))
+        info = {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zopen(z).read("Run_info.csv").decode("utf-8-sig")))}
+        if _can_lock:
+            check("an unreadable folder is reported, not silently skipped", (info["unreadable_folders"], int(info["read_errors"]) >= 1), ("1", True))
     finally:
-        os.chmod(os.path.join(src, "P", "locked"), 0o755)
+        if _can_lock: os.chmod(os.path.join(src, "P", "locked"), 0o755)
 # ---- determinism: the same data, profiled twice (different random folder ids), compiles to byte-identical output
 with tempfile.TemporaryDirectory() as t:
     src = os.path.join(t, "parent")
@@ -173,7 +178,7 @@ with tempfile.TemporaryDirectory() as t:
     for k in range(2):
         z, *_ = fp.profile(src, os.path.join(t, f"p{k}"), log=lambda *_: None, workers=1, tier=2)
         o = os.path.join(t, f"c{k}")
-        subprocess.run([sys.executable, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "compile_profiles.py"), z, "--out", o, "--min-project-files", "1"], capture_output=True)
+        subprocess.run([sys.executable, os.path.join(ROOT, "profile-compile", "scripts", "compile_profiles.py"), z, "--out", o, "--min-project-files", "1"], capture_output=True)
         outs.append([open(os.path.join(o, n), "rb").read() for n in ("Project_Compiled.csv", "Assembly_Breakdown_ESTIMATE.csv")])
     check("same data, two profiles, two compiles: identical Project Compiled and Assembly Breakdown", outs[0] == outs[1], True)
 
@@ -184,7 +189,7 @@ with tempfile.TemporaryDirectory() as t:
     Q("X/X.sldasm", sw_file(["a1.sldprt", "a2.sldprt", "far.sldprt"])); Q("X/a1.sldprt", "a1"); Q("X/a2.sldprt", "a2!")
     Q("Y/Z.sldasm", sw_file(["z1.sldprt"])); Q("Y/z1.sldprt", "z1"); Q("Y/far.sldprt", "far - lives next to Z but belongs to X")
     z, *_ = fp.profile(src, os.path.join(t, "out"), log=lambda *_: None, workers=1, tier=2)
-    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    runs = cp.load_profiles([z]); ext_map, soft = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     _c, _f, _s, review, asm, ev = cp.compile_runs(runs, ext_map, soft, False, "auto", True)
     p = ev["projects"][0]
     check("a part that lives away from its assembly is assigned by reference (X has 3 parts)", {r[1]: r[2] for r in asm}, {"X.sldasm": 3, "Z.sldasm": 1})

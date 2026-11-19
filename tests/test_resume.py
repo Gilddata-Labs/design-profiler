@@ -3,6 +3,7 @@ finished file, and ends with exactly the output an uninterrupted run gives.   Ru
 import csv, io, os, sys, tempfile, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 
 bad = []
@@ -26,11 +27,11 @@ def counting_sig(*a, **k):
 fp.signature = counting_sig
 
 def rows_of(zip_path):
-    r = list(csv.DictReader(io.StringIO(zipfile.ZipFile(zip_path).read("Files.csv").decode("utf-8-sig"))))
+    r = list(csv.DictReader(io.StringIO(zopen(zip_path).read("Files.csv").decode("utf-8-sig"))))
     return [{k: v for k, v in x.items() if k != "dir_id"} for x in r]          # dir_id differs between runs (random salt)
 
 def info_of(zip_path):
-    return {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zipfile.ZipFile(zip_path).read("Run_info.csv").decode("utf-8-sig")))}
+    return {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zopen(zip_path).read("Run_info.csv").decode("utf-8-sig")))}
 
 def run(src, out, **kw):
     z, *_ = fp.profile(src, out, log=lambda *_: None, workers=2, chunk_files=5, system_info=False, tier=1, metrics_interval=1.0, **kw)
@@ -60,7 +61,7 @@ with tempfile.TemporaryDirectory() as t:
     z = run(src, out); c2 = CALLS[0]
     check("resumed run did not re-read anything that was already saved", c1 + c2, total_calls)
     check("resumed output is identical to the uninterrupted output", rows_of(z) == base, True)
-    log = zipfile.ZipFile(z).read("Run_log.csv").decode("utf-8")
+    log = zopen(z).read("Run_log.csv").decode("utf-8")
     check("log tells the story (resumed, finished projects skipped)", ("RESUMED" in log, "unchanged since an earlier run" in log, info_of(z)["restarts_resumed"]), (True, True, "1"))
     check("saved progress is removed after a successful run", os.path.exists(os.path.join(out, ".resume")), False)
     # ---- 2. crash in the middle of a chunk (nothing of that chunk was saved)
@@ -96,7 +97,7 @@ with tempfile.TemporaryDirectory() as t:
     except Boom: pass
     fp._TEST_HOOK = None
     z = run(src, out, resume=False)
-    log = zipfile.ZipFile(z).read("Run_log.csv").decode("utf-8")
+    log = zopen(z).read("Run_log.csv").decode("utf-8")
     check("fresh start (resume off) does not resume", ("RESUMED" in log, rows_of(z) == base), (False, True))
     out = os.path.join(t, "o6")
     fp._TEST_HOOK = boom_after_chunk
@@ -105,7 +106,7 @@ with tempfile.TemporaryDirectory() as t:
     fp._TEST_HOOK = None
     z0, *_ = fp.profile(src, out, log=lambda *_: None, workers=2, chunk_files=5, system_info=False, tier=0)
     check("different settings (level 0) start their own run instead of reusing level-1 progress",
-          ("RESUMED" in zipfile.ZipFile(z0).read("Run_log.csv").decode("utf-8"), "rel_path" in rows_of(z0)[0]), (False, False))
+          ("RESUMED" in zopen(z0).read("Run_log.csv").decode("utf-8"), "rel_path" in rows_of(z0)[0]), (False, False))
     # ---- 6. the folder changes while the run is down: the result is not silently trusted - it is flagged
     out = os.path.join(t, "o7")
     fp._TEST_HOOK = boom_after_chunk
@@ -114,7 +115,7 @@ with tempfile.TemporaryDirectory() as t:
     fp._TEST_HOOK = None
     extra = os.path.join(src, "P1", "sub0", "zz_new.sldprt"); open(extra, "wb").write(b"new")
     z = run(src, out); os.remove(extra)
-    log = zipfile.ZipFile(z).read("Run_log.csv").decode("utf-8")
+    log = zopen(z).read("Run_log.csv").decode("utf-8")
     check("a folder that changed between restarts is flagged (WARN in the log, counted in Run_info)", ("changed while profiling" in log, info_of(z)["projects_changed_during_run"]), (True, "1"))
     # ---- 7. a file is REPLACED while the run is down (same file count): the stale saved rows are not kept
     out = os.path.join(t, "o8")
@@ -126,14 +127,14 @@ with tempfile.TemporaryDirectory() as t:
     keep = open(gone, "rb").read(); os.remove(gone); open(newf, "wb").write(b"REPLACEMENT")
     z = run(src, out)
     names = [r["rel_path"] for r in rows_of(z) if r["project"] == "P0"]
-    log = zipfile.ZipFile(z).read("Run_log.csv").decode("utf-8")
+    log = zopen(z).read("Run_log.csv").decode("utf-8")
     check("replaced file (in a project finished before the stop): the new one is listed, the removed one is not",
           (any(n.endswith("f00_replacement.sldprt") for n in names), "sub0/f00.sldprt" in names), (True, False))
     check("replaced file: stale chunks are redone, said in the log and counted",
           ("profiled again" in log, int(info_of(z)["chunks_redone_after_change"]) > 0), (True, True))
     os.remove(newf); open(gone, "wb").write(keep)
     # ---- 9. folder ids are long enough that two folders never share one
-    ids = {r["dir_id"] for r in csv.DictReader(io.StringIO(zipfile.ZipFile(z).read("Files.csv").decode("utf-8-sig")))}
+    ids = {r["dir_id"] for r in csv.DictReader(io.StringIO(zopen(z).read("Files.csv").decode("utf-8-sig")))}
     check("folder ids are 16 hex characters", {len(i) for i in ids}, {16})
 fp.signature = _orig_sig
 sys.exit(1 if any(bad) else 0)

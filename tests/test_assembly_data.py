@@ -2,6 +2,7 @@
 Run: python tests/test_assembly_data.py"""
 import csv, io, os, re, sys, tempfile, zipfile
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 
 TOP, SUB, LOOSE, PART = "ZZTOPZZ", "ZZSUBZZ", "ZZLOOSEZZ", "ZZPARTNAMEZZ"
@@ -17,7 +18,7 @@ def build(t):
 
 def run(t, anon):
     z, *_ = fp.profile(t, os.path.join(t, "out"), log=lambda *_: None, anonymize_assembly_names=anon, workers=1, tier=0)
-    zf = zipfile.ZipFile(z)
+    zf = zopen(z)
     rd = lambda n: list(csv.DictReader(io.StringIO(zf.read(n).decode("utf-8-sig"))))
     return rd("Files.csv"), rd("Dirs.csv"), {r["key"]: r["value"] for r in rd("Run_info.csv")}, b"\n".join(zf.read(n) for n in zf.namelist())
 

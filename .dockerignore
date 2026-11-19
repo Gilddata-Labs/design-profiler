@@ -3,6 +3,6 @@ output
 python
 *.zip
 *.pdf
-claude-skill
+profile-compile
 __pycache__
 .DS_Store

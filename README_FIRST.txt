@@ -7,6 +7,9 @@ keeps the contents of any file. File and folder names are replaced by codes unle
 It works only on this computer. It has no internet connection and sends nothing anywhere: you send us the zip yourself.
 
 BEFORE YOU START
+If your copy has a "python" folder inside, nothing needs to be installed: the launchers use it. Otherwise install Python 3.9 or
+newer from python.org (Windows: tick "Add python.exe to PATH").
+
 1. Extract this whole zip (right click, Extract All). Do not run it from inside the zip.
 2. Check the download: the release page lists a SHA256 checksum for this zip. On Windows:
      certutil -hashfile gilddesign-<version>-supplier.zip SHA256

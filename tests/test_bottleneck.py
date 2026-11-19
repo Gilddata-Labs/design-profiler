@@ -2,6 +2,7 @@
 measures its waiting; a real run writes 'speed' lines to Run_log.csv and main_limit / limit_breakdown to Run_info.csv."""
 import csv, io, os, sys, tempfile, threading, time, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp, sysmetrics as sm
 bad = []
 def check(l, g, w):
@@ -32,7 +33,7 @@ with tempfile.TemporaryDirectory() as t:
             open(os.path.join(d, f"f{i}.dwg"), "wb").write(b"AC1027" + b"\0" * 300)
     real = fp.signature_stream if hasattr(fp, "signature_stream") else None
     z, *_ = fp.profile(src, os.path.join(t, "o"), log=lambda *_: None, workers=2, chunk_files=100, system_info=False, tier=2)
-    zf = zipfile.ZipFile(z)
+    zf = zopen(z)
     info = {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zf.read("Run_info.csv").decode("utf-8-sig")))}
     log = list(csv.DictReader(io.StringIO(zf.read("Run_log.csv").decode("utf-8-sig"))))
     speed = [r["message"] for r in log if r["phase"] == "speed"]
@@ -55,7 +56,7 @@ def real_run(patch, files_per_folder=40, folders=6, projects=2, workers=4, chunk
             z, *_ = fp.profile(src, os.path.join(t, "o"), log=lambda *_: None, workers=workers, chunk_files=chunk, system_info=False, tier=2)
         finally:
             restore()
-        zf = zipfile.ZipFile(z)
+        zf = zopen(z)
         info = {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zf.read("Run_info.csv").decode("utf-8-sig")))}
         speed = [r["message"] for r in csv.DictReader(io.StringIO(zf.read("Run_log.csv").decode("utf-8-sig"))) if r["phase"] == "speed"]
         return info, speed

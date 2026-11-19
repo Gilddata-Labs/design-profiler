@@ -3,6 +3,7 @@
 name: ci
 on:
   push:
+    branches: [master]     # feature branches run through their pull request, so one run per commit
   pull_request:
   workflow_dispatch:
 
@@ -34,6 +35,8 @@ jobs:
           if [ -n "$failed" ]; then echo "FAILED:$failed"; exit 1; fi
       - name: Smoke test the command line on this OS
         shell: bash
+        env:
+          GILDDESIGN_EDITION: internal   # a checkout is the supplier edition; verify and catalogue need the internal one
         run: |
           mkdir -p smoke/Proj && printf 'ISO-10303-21;\nHEADER;\nFILE_NAME(%s);\nENDSEC;\n' "'a','',(''),(''),'','SolidWorks',''" > smoke/Proj/a.step
           python gilddesign.py check smoke --out smoke_out --seconds 5
@@ -59,15 +62,50 @@ jobs:
             -v "$PWD/data:/data:ro" -v "$PWD/output:/out" gilddesign:ci
           ls output | grep -q '^profile_'
 
+  windows-bundle:
+    # The supplier bundle with the embeddable Python: sellers without Python double click run.bat
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the bundle
+        run: python tools/build_release.py --windows
+      - name: Unpack it and run the profiler with the bundled Python only
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem dist\*-supplier-windows.zip | Select-Object -First 1
+          Expand-Archive $zip.FullName -DestinationPath bundle
+          $app = (Get-ChildItem bundle -Directory | Select-Object -First 1).FullName
+          New-Item -ItemType Directory -Force smoke\Proj | Out-Null
+          Set-Content smoke\Proj\a.step "ISO-10303-21;"
+          & "$app\python\python.exe" "$app\gilddesign.py" --version
+          & "$app\python\python.exe" "$app\gilddesign.py" check smoke --out smoke_out --seconds 5
+          & "$app\python\python.exe" "$app\gilddesign.py" quick smoke --out smoke_out
+          & "$app\python\python.exe" "$app\gilddesign.py" extract smoke --out smoke_out
+          Get-ChildItem smoke_out
+          if (-not (Get-ChildItem smoke_out -Filter "profile_*.zip")) { throw "no profile zip from the bundled Python" }
+      - name: run.bat uses the bundled Python (no Python on PATH)
+        shell: pwsh
+        run: |
+          $app = (Get-ChildItem bundle -Directory | Select-Object -First 1).FullName
+          $env:PATH = "C:\Windows\System32;C:\Windows"
+          $smoke = (Resolve-Path smoke).Path
+          Set-Location $app
+          cmd /c "echo. | run.bat `"$smoke`" --out `"$smoke\..\smoke_bat`""
+          Get-ChildItem ..\..\smoke_bat
+          if (-not (Get-ChildItem ..\..\smoke_bat -Filter "profile_*.zip")) { throw "run.bat did not produce a profile zip" }
+
   release:
-    needs: [tests, docker]
+    needs: [tests, docker, windows-bundle]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python tools/build_release.py
+      - run: python tools/build_release.py --windows
       - uses: actions/upload-artifact@v4
         with:
           name: release-zips

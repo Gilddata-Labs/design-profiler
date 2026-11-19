@@ -2,12 +2,13 @@
 anything), never open types the compiler classifies by name; a sampled type that shows CAD content is read in full at the end."""
 import csv, io, os, sys, tempfile, zipfile, builtins
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 bad = []
 def check(l, g, w):
     ok = g == w; print(("ok   " if ok else "FAIL ") + f"{l}: {g}" + ("" if ok else f" (wanted {w})")); bad.append(not ok)
 # the profiler's table is the compiler's table
-mp = os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping", "extensions.csv")
+mp = os.path.join(ROOT, "profile-compile", "scripts", "mapping", "extensions.csv")
 if os.path.exists(mp):
     theirs = {l.split(",", 4)[0]: l.split(",", 4)[1] for l in open(mp, encoding="utf-8").read().splitlines()[1:]}
     check("ext_classes.csv equals the compiler's extensions.csv (ext -> class)", fp.EXT_CLASSES == theirs, True)
@@ -34,7 +35,7 @@ with tempfile.TemporaryDirectory() as t:
         z = fp.profile(root, os.path.join(t, "o"), log=lambda *_: None, resume=False, system_info=False, workers=4, chunk_files=100)[0]
     finally:
         builtins.open = real_open
-    zf = zipfile.ZipFile(z)
+    zf = zopen(z)
     rows = list(csv.DictReader(io.StringIO(zf.read("Files.csv").decode("utf-8-sig"))))
     tag = lambda ext: [r["header_signature"] for r in rows if r["ext"] == ext]
     info = {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(zf.read("Run_info.csv").decode("utf-8-sig")))}
@@ -47,14 +48,14 @@ with tempfile.TemporaryDirectory() as t:
     root2 = os.path.join(t, "r2"); proj2 = os.path.join(root2, "Q"); os.makedirs(proj2)
     for i in range(30): open(os.path.join(proj2, f"d{i:02d}.bak"), "wb").write(STEP if i in (1, 20) else b"plain")        # file 1 is in the sample; file 20 is not
     z2 = fp.profile(root2, os.path.join(t, "o2"), log=lambda *_: None, resume=False, system_info=False, workers=4, chunk_files=100)[0]
-    z2f = zipfile.ZipFile(z2)
+    z2f = zopen(z2)
     r2 = list(csv.DictReader(io.StringIO(z2f.read("Files.csv").decode("utf-8-sig"))))
     check("the sample hit makes the whole type be read: BOTH STEP files are found, none left as NOTAG", ([r["header_signature"].startswith("STEP:") for r in r2].count(True), [r["header_signature"] for r in r2].count("NOTAG")), (2, 0))
     i2 = {r["key"]: r["value"] for r in csv.DictReader(io.StringIO(z2f.read("Run_info.csv").decode("utf-8-sig")))}
     check("Run_info and Content_Hits.csv say so", (i2["types_with_cad_content_read_in_full"], int(i2["files_read_after_a_cad_hit"]) > 20, "Content_Hits.csv" in z2f.namelist()), ("1", True, True))
     # --- the order of rows is unchanged and a re-run is identical
     z3 = fp.profile(root2, os.path.join(t, "o3"), log=lambda *_: None, resume=False, system_info=False, workers=2, chunk_files=7)[0]
-    r3 = list(csv.DictReader(io.StringIO(zipfile.ZipFile(z3).read("Files.csv").decode("utf-8-sig"))))
+    r3 = list(csv.DictReader(io.StringIO(zopen(z3).read("Files.csv").decode("utf-8-sig"))))
     check("a different worker count and chunk size give the same tags", [(r["rel_path"], r["header_signature"]) for r in r3] == [(r["rel_path"], r["header_signature"]) for r in r2] or
           sum(r["header_signature"].startswith("STEP:") for r in r3) == 2, True)
 sys.exit(1 if any(bad) else 0)

@@ -2,6 +2,7 @@
 import http.server, json, os, sys, tempfile, threading, urllib.parse, urllib.request, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 bad = []
 def check(l, g, w):
     ok = g == w; print(("ok   " if ok else "FAIL ") + f"{l}: {g}" + ("" if ok else f" (wanted {w})")); bad.append(not ok)
@@ -72,7 +73,7 @@ with tempfile.TemporaryDirectory() as out:
     r = stt["result"]
     check("run finished with 2 projects, 2 items", (stt["state"], r["projects"], r["files"]), ("done", 2, 2))
     check("notes mention the missing sizes", any("no size" in n for n in r["notes"]), True)
-    z = zipfile.ZipFile(r["path"])
+    z = zopen(r["path"])
     check("download serves the zip", get(f"/api/download?t={T}")[:2], b"PK")
     check("zip has Files.csv with f3d rows", z.read("Files.csv").decode("utf-8-sig").count(",f3d,"), 2)
     post("/api/fusion/logout", {"t": T})

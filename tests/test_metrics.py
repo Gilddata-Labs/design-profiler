@@ -2,6 +2,7 @@
 import csv, getpass, io, os, socket, sys, tempfile, time, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp
 
 bad = []
@@ -24,7 +25,7 @@ with tempfile.TemporaryDirectory() as t:
     fp.signature = _orig
     stats = [f for f in os.listdir(out) if f.startswith("run_stats_")]
     check("a separate, shareable run_stats zip is written next to the profile", len(stats), 1)
-    zs, zp = zipfile.ZipFile(os.path.join(out, stats[0])), zipfile.ZipFile(z)
+    zs, zp = zopen(os.path.join(out, stats[0])), zopen(z)
     want = {"Run_log.csv", "Run_metrics.csv", "Run_phases.csv", "System_info.csv"}
     check("it holds the four logs", want <= set(zs.namelist()), True)
     check("the same four logs are inside the profile zip", want <= set(zp.namelist()), True)

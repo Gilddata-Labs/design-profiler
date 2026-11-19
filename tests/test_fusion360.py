@@ -1,7 +1,8 @@
 """Fusion 360 files: .f3d part, .f3z assembly, .f2d drawing, Fusion Electronics .fsch/.fbrd/.flbr; domain follows the software."""
 import os, sys, tempfile, zipfile
+os.environ.setdefault("PROFILER_NO_REVEAL", "1"); os.environ.setdefault("PROFILER_NO_BROWSER", "1")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "claude-skill", "profile-compile", "scripts"))
+sys.path.insert(0, os.path.join(ROOT, "profile-compile", "scripts"))
 try:
     import compile_profiles as cp
 except ImportError:
@@ -19,7 +20,7 @@ with tempfile.TemporaryDirectory() as t:
     zp = os.path.join(t, "v.zip")
     zipit([("F1", "f3d", 90000 + i, f"p{i}.f3d") for i in range(3)] + [("F1", "f3z", 500000, "asm.f3z"), ("F1", "f2d", 60000, "sheet.f2d"),
           ("F2", "fsch", 9000, "a.fsch"), ("F2", "fbrd", 9000, "a.fbrd"), ("F2", "flbr", 9000, "a.flbr")], zp)
-    em, sf = cp.load_mapping(os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "mapping"))
+    em, sf = cp.load_mapping(os.path.join(ROOT, "profile-compile", "scripts", "mapping"))
     compiled, _f, stats, review, asm, ev = cp.compile_runs(cp.load_profiles([zp]), em, sf, False, "auto", True, "folder")
     pc = {c[0]: dict(zip(cp.HEADINGS, c)) for c in compiled}
     f1, f2 = pc["v/F1"], pc["v/F2"]

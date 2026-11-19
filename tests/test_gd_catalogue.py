@@ -8,6 +8,7 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+from _helpers import zopen, wopen  # noqa: E402
 import file_profiler as fp  # noqa: E402
 import gd_catalogue as gc  # noqa: E402
 
@@ -98,7 +99,7 @@ try:
     dup = list(csv.DictReader(open(os.path.join(co, "qc", "duplicate_groups.csv"), encoding="utf-8-sig")))
     check("duplicate group across 2 sellers listed", [(r["copies"], r["sellers"]) for r in dup], [("2", "2")])
     import openpyxl
-    wb = openpyxl.load_workbook(os.path.join(co, "design_catalogue.xlsx"))
+    wb = wopen(os.path.join(co, "design_catalogue.xlsx"))
     check("workbook tabs", wb.sheetnames, ["Catalogue", "Sellers", "Scores", "QC Flags", "Conflicts", "Missing Fields", "Duplicate Groups", "Format Status", "Method Notes"])
     cards = sorted(os.listdir(os.path.join(co, "cards")))
     check("one card per dataset plus an index", len(cards), len(ds) + 1)

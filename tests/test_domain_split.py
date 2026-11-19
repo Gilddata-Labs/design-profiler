@@ -1,8 +1,9 @@
 """Split by domain: one workbook per domain with only that domain's projects; nothing lost, nothing duplicated; By Domain summary adds up.
 Run: python tests/test_domain_split.py"""
 import csv, os, subprocess, sys, tempfile, zipfile
+from _helpers import zopen, wopen  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCRIPT = os.path.join(ROOT, "claude-skill", "profile-compile", "scripts", "compile_profiles.py")
+SCRIPT = os.path.join(ROOT, "profile-compile", "scripts", "compile_profiles.py")
 if not os.path.exists(SCRIPT):
     print("SKIP - compiler not found next to this package"); sys.exit(0)
 try:
@@ -29,7 +30,7 @@ def run(z, out, *flags):
     return r
 
 def tab(path, name):
-    ws = openpyxl.load_workbook(path, read_only=True)[name]
+    ws = wopen(path, read_only=True)[name]
     return list(ws.iter_rows(values_only=True))
 
 with tempfile.TemporaryDirectory() as t:
