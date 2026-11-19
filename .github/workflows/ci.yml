@@ -3,6 +3,7 @@
 name: ci
 on:
   push:
+    branches: [master]     # feature branches run through their pull request, so one run per commit
   pull_request:
   workflow_dispatch:
 
