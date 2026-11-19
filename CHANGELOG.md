@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Local testing replaces CI: `tools/run_tests.py` runs the whole suite on any OS, and `.githooks/pre-push` runs it before every push (switch on with `git config core.hooksPath .githooks`). README section "Changing the code".
+
 ## 0.4.0
 
 The first release built and tested from GildData's GitHub, ready for sellers.

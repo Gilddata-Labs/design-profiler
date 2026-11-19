@@ -100,14 +100,30 @@ Everything that is a judgement is a setting or a table, not code: score weights 
 
 Sellers normally run from this repository. For a seller who cannot use git or has no Python, `python3 tools/build_release.py --windows` builds `dist/gilddesign-<version>-supplier.zip` and `-supplier-windows.zip` (with the official embeddable Python included) plus `SHA256SUMS.txt`; the `-internal.zip` is for GildData. A tag `vX.Y.Z` (matching `TOOL_VERSION` in `gd_version.py`) builds the same, signs them with Sigstore and publishes a GitHub release. Builds are reproducible: the same commit gives the same checksums.
 
-## Tests and CI
+## Changing the code
 
-```bash
-pip install openpyxl
-for t in tests/test_*.py; do python3 "$t" || echo "FAILED $t"; done
-```
+There is no CI on GitHub for this repository (it stays on the free tier). Every change is tested locally before it is pushed:
 
-53 test files: synthetic trees with known counts, damaged files, planted markers that must not leak, resume after a crash, Windows network share behaviour, memory limits, the browser page, the Fusion connector against a local fake, the catalogue end to end, and the hardening checks. CI (`.github/workflows/ci.yml`) runs them on Windows, macOS and Linux with Python 3.9 and 3.12, builds and runs the Docker image sealed, builds and runs the Windows bundle, and builds the packaged copies.
+1. Once per clone, switch on the pre-push hook and install the one test dependency:
+
+   ```bash
+   git config core.hooksPath .githooks
+   python3 -m venv .venv && .venv/bin/python -m pip install openpyxl     # Windows: .venv\Scripts\python -m pip install openpyxl
+   ```
+
+   The hook uses `.venv` when it exists (or `$PYTHON` if set), so the system Python stays untouched.
+
+2. Make the change, then run the suite yourself (a few minutes; `python3 tools/run_tests.py quick` runs only the files whose name matches):
+
+   ```bash
+   .venv/bin/python tools/run_tests.py
+   ```
+
+3. `git push`. The hook runs the same suite again and stops the push if any test fails. `--no-verify` skips it; use that only for a change that cannot affect the code, such as a README typo.
+
+The suite has 53 test files: synthetic trees with known counts, damaged files, planted markers that must not leak, resume after a crash, Windows network share behaviour, memory limits, the browser page, the Fusion connector against a local fake, the catalogue end to end, and the hardening checks. Tests that only apply to one operating system skip themselves elsewhere, so a change that touches Windows behaviour (paths, file locking, launchers) should also be run on a Windows machine before pushing.
+
+`.github/workflows/` still holds the CI and release workflows from 0.4.0 (tests on Windows, macOS and Linux, the Docker image, the Windows bundle, signed releases). They need paid Actions minutes for a private repository and are not part of the process; keep them disabled in the repository's Actions settings.
 
 ## Repository layout
 
@@ -121,6 +137,7 @@ for t in tests/test_*.py; do python3 "$t" || echo "FAILED $t"; done
 | `ui.py`, `fusion_cloud_profiler.py` | The local browser page and the Autodesk Fusion connector |
 | `run*.bat`, `run*.command`, `run-docker.*`, `Dockerfile`, `docker-compose.yml` | Launchers |
 | `tools/build_release.py` | Packaged copies |
+| `tools/run_tests.py`, `.githooks/pre-push` | The local test run, and the hook that runs it before every push |
 | `docs/ENGINE.md` | The engine's own documentation: detail levels, network shares, resume, sheet counting, what was verified on real files |
 | `README_FIRST.txt` | The one page guide inside a packaged copy |
 | `CHANGELOG.md` | What changed in each version |
