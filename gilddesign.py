@@ -51,7 +51,7 @@ def _names(a):
 def cmd_check(a):
     import gd_check
     folder = (a.folder or _ask_folder() or "").strip().strip('"')
-    rep, _path = gd_check.run(folder, a.out or _default_out(), budget_s=a.seconds, project_depth=a.project_depth or 1)
+    rep, _path = gd_check.run(folder, _writable_out(a.out or _default_out()), budget_s=a.seconds, project_depth=a.project_depth or 1)
     return 1 if rep["verdict"] == "FAIL" else 0
 
 
@@ -68,6 +68,22 @@ def _label(a, coded):
         return "dataset"
 
 
+def _writable_out(path):
+    """Create the output folder and prove it can be written, with a plain message instead of a traceback when it cannot."""
+    try:
+        if os.path.isfile(path):
+            raise OSError(f"{path} is a file, not a folder")
+        os.makedirs(path, exist_ok=True)
+        probe = os.path.join(path, ".write-test")
+        with open(probe, "w") as f:
+            f.write("ok")
+        os.remove(probe)
+    except OSError as e:
+        print(f"Cannot write to the output folder {path}: {e}\nChoose another folder with --out.", file=sys.stderr)
+        raise SystemExit(1)
+    return path
+
+
 def _folder(a):
     a.folder = (a.folder or _ask_folder() or "").strip().strip('"')
     return a.folder
@@ -80,7 +96,7 @@ def cmd_quick(a):
     coded = _names(a)
     a.name = _label(a, coded)
     argv = [a.folder] if a.folder else []
-    argv += ["--quick", "--out", a.out or _default_out()]
+    argv += ["--quick", "--out", _writable_out(a.out or _default_out())]
     argv += [] if not a.name else ["--name", a.name]
     argv += [] if not a.project_depth else ["--project-depth", str(a.project_depth)]
     argv += ["--anonymize-names"] if coded else []
@@ -96,7 +112,7 @@ def cmd_extract(a):
     coded = _names(a)
     a.name = _label(a, coded)
     argv = [a.folder] if a.folder else []
-    argv += ["--out", a.out or _default_out(), "--level", str(a.level)]
+    argv += ["--out", _writable_out(a.out or _default_out()), "--level", str(a.level)]
     argv += [] if not a.name else ["--name", a.name]
     argv += [] if not a.project_depth else ["--project-depth", str(a.project_depth)]
     argv += ["--anonymize-names"] if coded else []
@@ -169,8 +185,8 @@ def cmd_catalogue(a):
     print("Manifest check:")
     cmd_verify(argparse.Namespace(zips=zips))
     print()
-    gd_catalogue.build(zips, a.out or os.path.join(_default_out(), "catalogue"), sellers_csv=a.sellers,
-                       answers_path=a.supplier_answers, cards=not a.no_cards)
+    gd_catalogue.build(zips, _writable_out(a.out or os.path.join(_default_out(), "catalogue")), sellers_csv=a.sellers,
+                       answers_path=a.supplier_answers, answers_map=a.answers_map, cards=not a.no_cards)
     return 0
 
 
@@ -232,6 +248,7 @@ def build_parser():
         p.add_argument("--out", help="output folder (default ./output/catalogue)")
         p.add_argument("--sellers", help="CSV with columns zip,seller (default: the label in each zip's file name)")
         p.add_argument("--supplier-answers", help="seller answers, CSV or XLSX: Project Name (+ Seller) and one column per field")
+        p.add_argument("--answers-map", help="CSV (form_column,field) or JSON that renames the intake form's headings to our field names")
         p.add_argument("--no-cards", action="store_true", help="do not write the HTML score cards")
         p.set_defaults(fn=cmd_catalogue)
 
@@ -256,6 +273,14 @@ def main(argv=None):
     if argv and argv[0] == "compile" and "--" in argv:   # everything after -- goes to the compiler unchanged
         i = argv.index("--")
         argv, rest = argv[:i], argv[i + 1:]
+    if argv and argv[0] == "ui":
+        # Everything after the command belongs to the page (its own --port, --out, --workers). argparse's REMAINDER
+        # does not accept options that come first, so they are handed over directly.
+        a = build_parser().parse_args(["ui"]); a.rest = argv[1:]
+        return a.fn(a)
+    if argv and argv[0] == "cloud" and len(argv) > 1 and argv[1] == "fusion":
+        a = build_parser().parse_args(["cloud", "fusion"]); a.rest = argv[2:]   # same for the Fusion connector's options
+        return a.fn(a)
     a = build_parser().parse_args(argv)
     if a.cmd == "compile":
         a.rest = rest

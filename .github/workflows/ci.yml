@@ -59,15 +59,44 @@ jobs:
             -v "$PWD/data:/data:ro" -v "$PWD/output:/out" gilddesign:ci
           ls output | grep -q '^profile_'
 
+  windows-bundle:
+    # The supplier bundle with the embeddable Python: sellers without Python double click run.bat
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the bundle
+        run: python tools/build_release.py --windows
+      - name: Unpack it and run the profiler with the bundled Python only
+        shell: cmd
+        run: |
+          mkdir bundle && tar -xf dist\gilddesign-*-supplier-windows.zip -C bundle
+          for /d %%d in (bundle\gilddesign-*) do set APP=%%d
+          mkdir smoke\Proj && echo ISO-10303-21; > smoke\Proj\a.step
+          %APP%\python\python.exe %APP%\gilddesign.py --version
+          %APP%\python\python.exe %APP%\gilddesign.py check smoke --out smoke_out --seconds 5
+          %APP%\python\python.exe %APP%\gilddesign.py quick smoke --out smoke_out
+          %APP%\python\python.exe %APP%\gilddesign.py extract smoke --out smoke_out
+          dir smoke_out
+      - name: run.bat uses the bundled Python (no Python on PATH)
+        shell: cmd
+        run: |
+          for /d %%d in (bundle\gilddesign-*) do set APP=%%d
+          set PATH=C:\Windows\System32
+          cd %APP% && echo. | call run.bat ..\..\smoke --out ..\..\smoke_bat
+          dir ..\..\smoke_bat
+
   release:
-    needs: [tests, docker]
+    needs: [tests, docker, windows-bundle]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python tools/build_release.py
+      - run: python tools/build_release.py --windows
       - uses: actions/upload-artifact@v4
         with:
           name: release-zips

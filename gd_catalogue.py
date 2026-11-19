@@ -136,8 +136,27 @@ def _seller_of(zip_path, sellers):
     return m.group(1) if m else base.rsplit(".", 1)[0]
 
 
-def _read_answers(path):
-    """Seller answers, wide format: one row per project, a 'Project Name' column, one column per field. CSV or XLSX (first sheet)."""
+def _read_answers_map(path):
+    """Column mapping for an intake form whose headings differ from ours: CSV with columns form_column,field (or a JSON object).
+    Example row:  "Describe the project",Project Description"""
+    if not path:
+        return {}
+    if path.lower().endswith(".json"):
+        with open(path, encoding="utf-8") as f:
+            raw = json.load(f)
+        return {str(k).strip(): str(v).strip() for k, v in raw.items()}
+    out = {}
+    for r in _rows(path):
+        src = (r.get("form_column") or r.get("from") or "").strip()
+        dst = (r.get("field") or r.get("to") or "").strip()
+        if src and dst:
+            out[src] = dst
+    return out
+
+
+def _read_answers(path, column_map=None):
+    """Seller answers, wide format: one row per project, a 'Project Name' column, one column per field. CSV or XLSX (first sheet).
+    `column_map` renames intake form headings to our field names (see _read_answers_map); matching is case and space insensitive."""
     if not path:
         return None
     if path.lower().endswith((".xlsx", ".xlsm")):
@@ -151,6 +170,10 @@ def _read_answers(path):
             wb.close()
     else:
         rows = _rows(path)
+    norm = lambda h: re.sub(r"\s+", " ", str(h or "")).strip().lower()
+    cmap = {norm(k): v for k, v in (column_map or {}).items()}
+    if cmap:
+        rows = [{cmap.get(norm(k), k): v for k, v in r.items()} for r in rows]
     out = {}
     for r in rows:
         key = (r.get("Seller") or "").strip(), (r.get("Project Name") or r.get("project") or "").strip()
@@ -312,13 +335,16 @@ def score_dataset(m):
 
 
 # ---------------------------------------------------------------------------------------------------------------- build
-def build(zips, out, sellers_csv=None, answers_path=None, cards=True, log=print):
+def build(zips, out, sellers_csv=None, answers_path=None, cards=True, log=print, answers_map=None):
     zips = [z for z in zips if os.path.basename(z).startswith("profile_")]
     if not zips:
         raise SystemExit("no step 2 profile zips (profile_*.zip) given")
     os.makedirs(out, exist_ok=True)
     sellers = {r["zip"]: r["seller"] for r in _rows(sellers_csv)} if sellers_csv else {}
-    answers = _read_answers(answers_path)
+    answers = _read_answers(answers_path, _read_answers_map(answers_map))
+    if answers_path and not answers:
+        log(f"warning: no usable rows in the answers file {answers_path}: it needs a 'Project Name' column "
+            f"(use --answers-map when the intake form names it differently); every required field will be flagged MISSING_FIELD")
     classes = _ext_classes()
     datasets, seller_rows, fp_index = [], [], collections.defaultdict(list)
     used_names = collections.Counter()

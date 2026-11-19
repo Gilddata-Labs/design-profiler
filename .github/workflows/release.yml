@@ -1,0 +1,52 @@
+# Release: on a version tag (v0.4.0) build the supplier, internal and Windows zips, sign them with Sigstore
+# (keyless: the signature is tied to this repository and workflow, no key to keep), and attach everything to a
+# GitHub release together with SHA256SUMS.txt.
+#
+# Cut a release:   git tag v0.4.0 && git push origin v0.4.0     (TOOL_VERSION in gd_version.py must match)
+# Verify a download (anyone, with the sigstore CLI: pip install sigstore):
+#   sigstore verify github --cert-identity-regexp 'https://github.com/Gilddata-Labs/design-profiler/' gilddesign-0.4.0-supplier.zip
+name: release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write   # Sigstore keyless signing
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Version tag matches gd_version.TOOL_VERSION
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          v=$(python -c "import gd_version; print(gd_version.TOOL_VERSION)")
+          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} but TOOL_VERSION is $v"; exit 1; }
+      - name: Build the zips (supplier, internal, Windows bundle)
+        run: python tools/build_release.py --windows
+      - name: Sign with Sigstore
+        uses: sigstore/gh-action-sigstore-python@v3.0.0
+        with:
+          inputs: dist/*.zip dist/SHA256SUMS.txt
+      - name: GitHub release with the zips, checksums and signatures
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.zip
+            dist/SHA256SUMS.txt
+            dist/*.sigstore.json
+          body: |
+            Checksums are in SHA256SUMS.txt. Every file is signed with Sigstore; verify with
+            `sigstore verify github --cert-identity-regexp 'https://github.com/Gilddata-Labs/design-profiler/' <file>`.
+            Send sellers only the supplier zip (or the Windows bundle); the internal zip stays at GildData.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: dist/

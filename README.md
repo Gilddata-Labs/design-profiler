@@ -1,245 +1,125 @@
 # GildData Design Data Profiler
 
-GildData's profiler for design datasets (CAD, BIM, EDA). A seller runs it on their own machine and sends us one zip of metrics;
-GildData compiles the zips into the catalogue, QC and buyer workbooks. Built on the Folder Profiler engine
-(data847/folder-profiler, commit in `UPSTREAM_COMMIT`); everything below the line is the engine's own documentation.
-The product requirements and decisions are kept in GildData's internal documents.
+Measures a folder of design files (CAD, BIM, EDA) into one zip of numbers, without copying, opening for upload, or sending any file anywhere. A seller runs it on their own machine and sends GildData the zip; GildData turns the zips from many sellers into a design catalogue, quality flags and a score card per dataset.
 
-## Commands (`python3 gilddesign.py <command>`)
+Two editions come from this one repository:
 
-| Command | Edition | What it does |
-| --- | --- | --- |
-| `check FOLDER` | both | Python, read access, output folder, size of the job, Step 1 time; opens no file; report has counts only |
-| `quick FOLDER` | both | Step 1: files per type and size per project; opens no file |
-| `extract FOLDER` | both | Step 2: full profile, detail level 2 by default (`--level 0/1/2`) |
-| `cloud fusion ...` | both | Same zip from an Autodesk Fusion hub (metadata only) |
-| `ui` | both | The same steps in a local browser page (127.0.0.1 only) |
-| `compile ZIPS -- [compiler options]` | internal | Zips to the compiled workbook (checks every manifest first) |
-| `compare A.zip B.zip` | internal | File counts and bytes per type side by side; exit 0 when identical |
-| `verify ZIPS` | internal | manifest.json present and no member changed after the run |
-| `catalogue ZIPS --out DIR [--sellers CSV] [--supplier-answers FILE]` | internal | Many sellers: design catalogue, QC flags, seller answers merge, duplicate groups across sellers, GildDesign Score cards |
+| Edition | Who runs it | Commands | How it is built |
+|---|---|---|---|
+| Supplier | A seller, on the machine or file server that holds the files | `check`, `quick`, `extract`, `cloud`, `ui` | `gilddesign-<version>-supplier.zip`, and `-supplier-windows.zip` with Python included |
+| Internal | GildData | the above plus `verify`, `compile`, `compare`, `catalogue` | `gilddesign-<version>-internal.zip`, or this repository checked out |
 
-`extract --fingerprint` (off by default, PRD open decision 2) adds keyed partial fingerprints of design files so copies offered by two sellers are found.
+## What it measures
 
-## Milestones 2 and 3 (v0.3.0)
+For every project (each folder directly inside the one you point it at):
 
-- **Readers (`gd_signals.py`, level 2):** compliance marking counts (ITAR, EAR, EXPORT, CONFIDENTIAL, PROPRIETARY) from DXF, STEP, IFC, IGES,
-  KiCad, Solid Edge, Inventor and Revit files (never the text; DWG and SolidWorks keep text compressed and are not covered); AutoCAD xref names from
-  DXF; Revit version, workshared flag and linked file names (written from the published stream descriptions, not yet checked on real Revit files);
-  opt in keyed fingerprints. Files.csv gains `signals` and `fp`; Links.csv gains kinds `xref` and `revit_link`. Saved progress format 2.
-- **Catalogue (`gd_catalogue.py`):** each seller zip compiled alone, then `design_catalogue.xlsx` (Catalogue, Sellers, Scores, QC Flags, Conflicts,
-  Missing Fields, Duplicate Groups, Format Status, Method Notes), CSVs under `qc/`, and one HTML GildDesign Score card per dataset in `cards/`.
-  All thresholds and weights are starting values in `gd_catalogue.SETTINGS`.
-- **Format status:** `profile-compile/scripts/mapping/format_status.csv` says per format what is read and how well it is verified.
-- **CI:** `.github/workflows/ci.yml` runs every test on Windows, macOS and Linux (Python 3.9 and 3.12), builds and runs the Docker image sealed, and
-  builds the release zips. It runs as soon as the repository is pushed to GitHub.
+- **Files and size** per type: native CAD (SolidWorks, Inventor, Solid Edge, CATIA, Creo, NX, Fusion, FreeCAD), BIM (Revit, IFC), neutral formats (STEP, IGES, DXF, DWG, Parasolid, glTF), EDA (KiCad, Altium, Eagle, Gerber), drawings, PDF, simulation, and everything else.
+- **Software and version** read from file headers (never the content): which CAD tool wrote each file, which release, 2D or 3D.
+- **Assemblies**: which parts each assembly references, duplicates, shared parts, unresolved references, with a confidence number.
+- **Drawings**: sheet counts in AutoCAD files (R2000 to R2018), with a confidence number. AutoCAD 2007 files are reported as unsupported, not guessed.
+- **Dates and vintage**: when files were made and last changed.
+- **Compliance markings**: counts of ITAR, EAR, EXPORT, CONFIDENTIAL and PROPRIETARY words in formats whose text is readable (DXF, STEP, IFC, IGES, KiCad, Solid Edge, Inventor, Revit). Only the count leaves the machine, never the text.
+- **Readability**: folders that could not be read, cloud tiered files that were counted but not opened, damaged files.
+- Optional, off by default: **fingerprints** (`--fingerprint`), a keyed code from each file's size and first and last 64 KB, so the same file offered by two sellers can be recognised. The code cannot be turned back into the file.
 
-## What our layer changes in the engine
+GildData's side adds, per dataset: domain (mechanical, architecture, electronics), native richness, 14 quality flags, a merge with the seller's own answers (rights to sell, authorship, description), duplicate groups across sellers, and the GildDesign Score card.
 
-- **Names coded by default** in the CLI and the page; real names only with `--real-names` (or by unticking the box), recorded in the manifest.
-- **manifest.json in every zip**: tool, version, edition, kind, detail level, names coded or real, SHA256 of every member.
-- **No self update**: the GitHub launcher (`drive-package/`) is removed; launchers start the bundled `gilddesign.py`; a new version is a new zip.
-- **Two editions**: `tools/build_release.py` writes `dist/gilddesign-<ver>-supplier.zip` (no compiler) and `-internal.zip`, plus `SHA256SUMS.txt`.
+## What never leaves the seller's machine
 
-## Fixes from the real file test campaign (v0.2.0)
+- No file content, no file copies, no thumbnails. Files are opened read only, and only their headers are read.
+- **Names are coded by default**: every project, folder and file name in the output is a code (extensions are kept). The seller keeps `name_map_*.zip`, which turns codes back into names, and sends it only if they choose to. `--real-names` keeps the real names; the zip records which choice was made.
+- No network code in the profiler. The only connection it can make is the optional Autodesk Fusion connector, which the seller signs into themselves.
+- Every zip carries `manifest.json` with the tool version, edition, detail level, name choice and a SHA256 of every member, so GildData can prove nothing changed after the run.
+- `tests/test_no_leak.py` plants secret markers in contents, names and folder names and fails if any appear in the output.
 
-Tested on 1,434 real public files (SolidWorks, Solid Edge, Inventor, AutoCAD R12 to 2018, STEP, IFC, IGES, KiCad, FreeCAD), 300,005
-synthetic files and 4,342 damaged CAD files. Fixed: authoring tool read from the STEP / IFC / IGES header only (Revit IFC was tagged
-Onshape, Open CASCADE STEP was tagged Fusion360); SolidWorks content tag `SWX:SolidWorks`; line breaks removed from wrapped STEP product
-names; DXF statuses `no-layout-objects`, `dxf-inconsistent`, `dxf-incomplete`; DWG `truncated`; zip FILE names coded in coded mode;
-duplicate Unreadable rows; stale temp listings of killed runs swept after 12 hours; a stray specific tool file no longer decides a
-project's domain; KiCad library / project files, BREP, glTF, binary DXF mapped. Regression tests: `tests/test_gd_fixes.py`
-(set `GD_CORPUS` to a folder of real DWG files for the truncation checks).
+## For sellers: run it
 
-## Tests
+Requirements: Windows 10 or 11, macOS, or Linux. Python 3.9 or newer, except with the Windows bundle, which includes Python. Nothing to install, no administrator rights.
 
-`python3 tests/test_gd.py`, `tests/test_gd_fixes.py`, `tests/test_gd_m2.py`, `tests/test_gd_catalogue.py` (our layer; set `GD_UPSTREAM=/path/to/data847/folder-profiler` to also prove identical counts against the
-upstream engine) and every `tests/test_*.py` of the engine. `test_structure.py` has one check that fails only when run as root (root can
-read a locked folder).
+1. Extract the zip you received. Check it: the SHA256 we sent you must match `certutil -hashfile <zip> SHA256` (Windows) or `shasum -a 256 <zip>` (macOS, Linux).
+2. Open a terminal in the extracted folder, or double click the launchers.
 
----
+| Step | Windows | macOS and Linux | What it does |
+|---|---|---|---|
+| Check | `python gilddesign.py check "D:\Projects"` | `python3 gilddesign.py check /data/projects` | Can it run, can it read the folder, how big is the job. Opens no file. Takes seconds. |
+| Step 1 | `python gilddesign.py quick "D:\Projects"` | `python3 gilddesign.py quick /data/projects` | Files per type and size per project. Opens no file. |
+| Step 2 | `python gilddesign.py extract "D:\Projects"` or drag the folder onto `run.bat` | `python3 gilddesign.py extract /data/projects` or `./run.command` | The full profile. |
 
-# Folder Profiler
+Or use the page in your browser: `run-ui.bat` (Windows) or `run-ui.command` (macOS, Linux), which opens `http://127.0.0.1:8765/` on this computer only. Pick the folder, click Step 1, then Step 2, then download the zip.
 
-Measures a folder of CAD/engineering projects and writes **metrics only** — file extensions, sizes, dates,
-and a short format tag per file, plus anonymous folder ids (no file is ever hashed). It never copies, uploads or stores
-file contents, folder names, or paths below the project name. The one exception is **assembly files** (`.sldasm .asm
-.iam .catproduct`): their file names are recorded (or replaced by codes `ASM-3F9A1C2B.SLDASM` with
-`--anonymize-assembly-names` / the UI tick box) so the *Assembly Breakdown* tab can be estimated by folder. Standard library only; no network code; files are opened read-only.
+Or run it sealed in Docker, where the container sees your folder read only, has no network and no privileges: `run-docker.bat` or `run-docker.sh <folder>`.
 
-Two pieces:
+3. Send the `profile_<code>_<date>.zip` from the `output` folder, plus the `quick_*.zip` from Step 1. `run_stats_*.zip` (timings and machine type, no names) helps us if something was slow. **Keep `name_map_*.zip`** unless you want us to see the real names.
 
-| Piece | Where | Who runs it |
-|---|---|---|
-| **Profiler** — produces `profile_<folder>_<date>.zip` | `file_profiler.py` (+ Docker / launchers) | the data owner, on their machine |
-| **Compiler** — turns those zips into the "Projects Compiled" workbook | `profile-compile/` | you, after receiving the zips |
+Options for Step 2: `--level 0|1|2` (detail, default 2: everything), `--real-names`, `--fingerprint` (only if GildData asks), `--out FOLDER`, `--workers N`. A stopped run resumes where it was when started again with the same settings.
 
-## Detail levels (default 2 - everything; the UI has no selector)
+Autodesk Fusion hubs: `python gilddesign.py cloud fusion --help`, or the Fusion tab on the page. Metadata only, signed in by you.
 
-| Level | Records | Gives the compiler |
-|---|---|---|
-| **0** | extensions, sizes, dates, format tag, anonymous folder ids, assembly file names | folder-based assembly estimate |
-| **1** | + names and relative paths of every file and folder (`rel_path`, `Dirs.csv` names) | PDF drawings by name, drawings/neutral files matched to parts and assemblies by name, real project names at any depth |
-| **2** (default) | + `Links.csv`: the *names* of files referenced inside assemblies, drawings and STEP files | **real part-to-assembly links** for SolidWorks, Solid Edge and Inventor assemblies and STEP structure |
+## For GildData: build the catalogue
 
-`--level 0|1|2` (default 2), `--project-depth N` (projects = folders N levels down, default 1) are command-line options only; the UI always uses level 2.
-Level 2 also counts the **sheets (layouts)** of every AutoCAD `.dwg` / `.dxf` (`sheets`, `sheets_conf` columns of `Files.csv`; only the number is kept, no layout names) - see below. Level 2 opens each assembly/drawing/STEP file **once** (the format tag and the references come from the same read) and keeps only referenced
-**file names** (no geometry, text or properties); it needs `cad_links.py` next to `file_profiler.py`. STEP files are streamed in 16 MB blocks and only
-their PRODUCT / ASSEMBLY entities are parsed (about 12x faster than line-by-line, identical result, flat memory). SolidWorks, Solid Edge and Inventor
-files have real container readers. **CATIA V5, Creo and NX have none:** for `.catproduct`, `.catdrawing`, `.prt`, `.drw` and non-OLE `.asm` the file is
-searched for CAD file names written as plain text (`kind = scan` in `Links.csv`); the compiler marks those assignments as weaker evidence. Revit and
-AutoCAD xrefs are not read (an xref links a drawing to a drawing, which does not change part / assembly counts).
-Because the default is level 2, the output contains client file and folder names: get the data owner's agreement first (`--level 0` records metrics only).
+```bash
+pip install openpyxl                                   # only for the workbooks
+python3 gilddesign.py verify received/                 # every zip: manifest present, nothing changed after the run
+python3 gilddesign.py catalogue received/ --out catalogue/ \
+    --sellers sellers.csv --supplier-answers answers.xlsx [--answers-map map.csv]
+python3 gilddesign.py compare ours.zip upstream.zip     # counts per file type side by side
+python3 gilddesign.py compile received/ -- --out compiled/   # the compiler alone, one or more zips
+```
 
-## Windows file servers and network shares (Server 2019, Azure File Sync, deduplication)
+- `sellers.csv` has columns `zip,seller` and names the seller behind each zip. Without it the label in the zip's file name is used (a code when names were coded).
+- `answers.xlsx` or `.csv` has one row per project: `Project Name`, optionally `Seller`, then `Project Description`, `Rights to sell (Y/N)`, `Original author (in house / client / third party)`, and any measured value the seller claims (`Domain`, `Native CAD Software`, `Part Files`, `Assembly Files`, `Native 2D Drawings`, `Total Files`). Claims that disagree with the measurement land in `qc/conflicts.csv`; the measurement wins.
+- `map.csv` (columns `form_column,field`) renames the headings of the real intake form to the field names above, so the form can change without touching code.
 
-Both steps work on mapped drives and `\\server\share` paths (long paths included). Built for file servers:
-- **Same fast engine in both steps.** Step 1 and step 2's counting pass share one threaded folder listing (4 threads on a local disk, 32 on a network drive or UNC path);
-  step 2's file readers also use 48 threads on a network share, because every open waits on the network (`PROFILER_WORKERS` overrides).
-- **Cloud-tiered / online-only files are never opened.** Files with the OFFLINE, RECALL_ON_OPEN, RECALL_ON_DATA_ACCESS or UNPINNED attribute (Azure File Sync cloud
-  tiering, OneDrive online-only) would be downloaded in full by even a 4 KB read. They are counted from the listing, tagged `TIERED` (AutoCAD ones get sheets status
-  `not-read-tiered`) and reported in `Run_info.csv` (`cloud_tiered_files_not_opened`).
-- **Unreadable folders and files are listed**, not just counted: `Unreadable.csv` (project, kind, path below the project, reason - e.g. `PermissionError`); step 1 lists folders only
-  (no file names), level 0 records no path. The compiler adds a Review line per project and writes `Unreadable.csv` next to the workbook.
-- **Dropped connections are retried** (timeouts, network name deleted, unreachable: 3 retries with pauses; a whole folder listing is repeated, so nothing is counted twice);
-  `network_retries` in `Run_info.csv`. Permission errors are never retried.
-- **Deduplicated files** (Windows Server Data Deduplication) read normally but more slowly; they are counted in `Run_info.csv` (`deduplicated_files`).
-Run step 1 from any PC against the share; run step 2 on the server itself or a machine on the same fast network, with an account that has read access
-(never type a password into the tool: use the signed-in account or `net use` first). Not tested against a real Server 2019 from the development Mac: the tiered-file and retry
-paths are tested with simulated attributes and errors, and every failure falls back to the plain behaviour.
+Output of `catalogue`:
 
-## Domain (Mechanical / Architecture / Electronics)
-
-Decided per project by the compiler: specific tools vote (SketchUp, Revit, SolidWorks ...; **general-purpose AutoCAD / Rhino do not**), then the tool named in
-STEP/IFC headers, then file and folder names against `domain_keywords.csv`, else `Unclassified`; `Project Stats` has `domain_basis` and `domain_confidence`, `Review` explains
-each non-obvious call. On a real multi-project architecture drive this put the great majority of projects in Architecture on SketchUp / Revit evidence, left the few
-without any evidence as Unclassified, and no longer called AutoCAD-heavy projects Mechanical (the old rule counted AutoCAD as Mechanical).
-
-## Two steps
-
-- **Step 1 - quick count** (`--quick`, or the *Step 1* button of the page): files per type and size, per project and overall - nothing is opened, no file
-  names are recorded, no archive or file content is looked at. Folders are listed through a shared queue by a few threads on a local disk and by many (32) on a network drive or UNC path, where waiting on the network is the bottleneck
-  (a local disk is limited by Python itself: measured 4 threads beating 32); one huge project is shared between threads; **there is no depth limit** (tested at 150 levels; `Run_info.csv` reports the deepest level reached) and folder links / junctions are not followed.
-  Writes `quick_<name>_<date>.zip` (`Extensions.csv`, `Extensions_All.csv`, `Projects.csv`, `Run_info.csv`); its numbers equal the full profile's `Extensions.csv`
-  (tested). Measured on a warm SSD (macOS): about 165,000 files per second (300,000 files in 1.8 s); 60,000 files in 0.5 s against 3.3 s for step 2; on a cold hard disk the gap is far larger because step 1 never opens a file.
-- **Step 2 - full profile** (the default run): everything below.
-- `compile_profiles.py quick_*.zip` turns a step-1 zip into `quick_count.xlsx` (Overview by file class, By Extension, By Project).
-
-## Resume, run statistics, scale
-
-- **Streaming + resumable.** Each project is processed in chunks of 5,000 files that are saved to `<out>/.resume/<run id>/` as they finish; stop the run
-  any way you like (even `kill -9`) and start it again with the same settings: finished projects and chunks are skipped, nothing is read twice, and the final
-  output is identical to an uninterrupted run (tested). `--fresh` ignores saved progress.
-  **Saved progress is checked against the disk.** Every saved chunk stores a fingerprint (relative path, size, modified time of its files); on a restart
-  a chunk whose files changed is profiled again (a replaced file with the same file count is caught), finished projects get a stat-only check
-  (no file is opened), and each of these is said in the log and counted in `Run_info.csv`.
-  Folder ids are 16 hex characters (64 bits; the earlier 10 collided with ~37% probability at 1M folders).
-- **No depth limit.** Folders are walked iteratively with no depth cap (tested 150 levels; Windows long paths via `\\?\`); `--project-depth` accepts any N;
-  directory links / junctions are not followed (and counted).
-- **Run statistics** (`run_stats_*.zip`, also inside the profile zip): `Run_phases.csv` (wall time per step + busy seconds per activity), `Run_metrics.csv`
-  (CPU %, memory, files/s, MB/s, process read speed every 5 s), `Run_log.csv` (events, written as they happen so a crash keeps them) and `System_info.csv`
-  (OS, CPU, RAM, disk type, antivirus state on Windows). No host name, user name or paths. Windows probes use ctypes/PowerShell and are untested here;
-  macOS and Linux probes were tested.
-
-## AutoCAD sheets (layouts), with a confidence number
-
-`dwg_sheets.py` counts the paper-space layouts of each drawing (LAYOUT objects minus the Model tab): DXF by its OBJECTS section, DWG R2000 through
-the object map and class table, DWG R2004-R2018 by decompressing the page-based sections and scanning the objects. Each file gets
-`sheets` and `sheets_conf` (0-100, **computed on that file**: the object map must parse, the handle read back from every sampled object
-must equal the one the map gave it, the layout count must be plausible; DXF 99, DWG at most 95). **Not supported:** AutoCAD 2007 (AC1021) files and
-binary DXF (reported as not counted, confidence 0); R13/R14 have no layouts.
-Validated against the DXF twin of 21 public drawings (21 of 21 identical) and run on 99 public DWG files of R2000-R2018. Not yet compared
-with AutoCAD's own count on a client's drawings. The compiler also splits its output **by domain**: `by-domain/compiled_<Domain>.xlsx` per domain (that domain's projects only; the domain workbooks together = the main workbook) and a `By Domain` summary tab. Every AutoCAD drawing counts as at least one sheet (Model-tab-only and unreadable files count as 1 and are marked in a `Sheets Basis` column). The compiler adds a **Drawing Breakdown** tab (one row per drawing file: format, software, sheets, confidence, the assembly it belongs to and how that was decided - by reference, by name, by folder, or several candidates) and `sheets`, `sheets_confidence` to File Level and `drawing_sheets`,
-`sheet_files_counted`, `sheet_files_not_counted`, `sheets_confidence_avg`, `sheets_confidence_min` to Project Stats; the 11-column Project
-Compiled tab is unchanged.
-
-## What has been verified on real files
-
-| Format | Verified on real files? |
+| Path | Contents |
 |---|---|
-| SolidWorks assemblies (`.sldasm`) | yes - a real assembly: all of its parts found |
-| STEP product structure | yes - real STEP files |
-| **Solid Edge** (`.asm`, `.dft`) | **yes** - a real hinge assembly gives exactly its 3 parts; 3 real drawings give the models they document (Engine1.dft -> engine1.asm, carb1.par, ...). Real files from public sources (SolidEdgeCommunity/SEU14, an MIT-licensed hinge example). Real `.par` parts and `.pwd` weldments were not read for references |
-| Solid Edge **content tag** (`OLE2:SolidEdge`) | **yes** - all 7 real files (3 `.dft`, 1 `.asm`, 3 `.par`) are recognised from the names inside the OLE directory, whatever their extension |
-| Inventor / Revit content tags, CATIA `V5_CFV2`, Creo `#UGC:` headers | **no real files seen** - the tags follow documented/remembered file signatures and are tested only on synthetic files |
-| CATIA / Creo / NX references (text scan) | **no real files seen** - mechanics tested on synthetic files only; expect false negatives, treat as weaker evidence |
-| Inventor, Revit, AutoCAD xrefs (references) | no real files seen; Inventor shares the OLE reader and is untested; Revit and AutoCAD xrefs are not read |
-| Windows system probes (metrics) | no - macOS and Linux only |
+| `design_catalogue.xlsx` | Tabs Catalogue, Sellers, Scores, QC Flags, Conflicts, Missing Fields, Duplicate Groups, Format Status, Method Notes |
+| `catalogue.csv`, `scores.csv` | The same, flat |
+| `qc/qc_report.csv`, `qc/conflicts.csv`, `qc/missing_fields.csv`, `qc/duplicate_groups.csv` | One line per flag, conflict, missing answer, duplicate group |
+| `cards/<seller>_<project>.html`, `cards/index.html` | GildDesign Score cards |
+| `compiled/<seller>/` | The compiler's workbook and CSVs per seller |
 
-## Duplicates and references across folders
+Everything that is a judgement is a setting or a table, not code: score weights and thresholds in `gd_catalogue.SETTINGS`, software counted as in demand in `IN_DEMAND`, required seller fields in `REQUIRED_SELLER_FIELDS`, file types and classes in `profile-compile/scripts/mapping/*.csv` (mirrored in `ext_classes.csv`, a test checks they match), format status shown to buyers in `mapping/format_status.csv`, compliance words in `gd_signals.MARKINGS`, the fingerprint key in `gd_version.FINGERPRINT_KEY` (changing it makes old and new fingerprints incomparable).
 
-- **Compressed files are not opened** (removed in 1.7): a `.zip` / `.rar` / `.7z` / `.tar` is one ordinary file. Profiles from earlier profilers may carry archive rows (`archive` column); the compiler still reads those, and does not count an archived file twice when an identical loose one exists.
-- **No hashing at all** (1.6): file contents are never fingerprinted. The compiler recognises duplicates by **type + size + modified date** (and, for
-  archived files, name + size); older profiles that still carry a `sha256` column keep exact matching. Measured on a real CAD drive of over 100,000 files: 97.4%
-  of the files it calls duplicates really are, and it finds 94.4% of the true duplicates; copies whose dates were reset are missed.
-- **Whole-project copies** are flagged by the compiler (>= 80% of a project's files identical to a bigger project; `Review.csv` +
-  `Project_Stats.csv`). `--copies exclude` drops them from Project Compiled, `--unique --unique-scope all` counts each content once in the whole profile.
-- **References to other folders** (shared standard-parts libraries, sibling projects) now resolve across the whole profile; they are reported as
-  `refs_external` (resolved) and the part is counted in the project it lives in.
-
-## Reliability and grouping (compiler)
-
-`structure.py` resolves references to real files (exact name, then comparable name; nearest copy wins; identical copies are
-interchangeable), assigns each file to an assembly with a recorded *method* (reference / name / folder / spread / even), and writes
-`Assembly_Confidence.csv` (High / Medium / Low per project and why, references resolved vs unresolved, shared parts) and
-`Assembly_Evidence.csv` (per assembly). The compiler splits each folder into sub-projects by **root assembly** by default (`--project-by auto`; an assembly
-no other assembly references plus everything it references) instead of guessing a folder depth, and skips the split when there are no references
-or fewer than half of them resolve. The Assembly Breakdown is filled by default (`--no-assembly-breakdown` to disable). Only "file references" are real CAD
-links; everything else is an estimate, and the confidence file says how much of each project rests on which.
-
-## Run the profiler
-
-**Docker (recommended — the container cannot write to your folder or reach the network)**
+## Release
 
 ```bash
-./run-docker.sh /path/to/parent-folder          # macOS / Linux
-run-docker.bat                                   # Windows: drag the folder onto it
+python3 tools/build_release.py             # dist/: supplier zip, internal zip, SHA256SUMS.txt
+python3 tools/build_release.py --windows   # plus the supplier bundle with the embeddable Python
 ```
 
-The container runs as a non-root user with `--network none`, `--read-only`, `--cap-drop ALL`,
-`--security-opt no-new-privileges`, your folder mounted `:ro`. Zip appears in `./output`. First run builds the image
-(needs internet once, to pull `python:3.12-alpine`).
+Builds are reproducible: the same commit gives the same checksums. To publish: bump `TOOL_VERSION` in `gd_version.py`, tag `vX.Y.Z` and push the tag. The release workflow builds all three zips, signs them with Sigstore and attaches them with the checksums to a GitHub release. Anyone can verify a download with `pip install sigstore` and `sigstore verify github --cert-identity-regexp 'https://github.com/Gilddata-Labs/design-profiler/' <file>`.
 
-**Without Docker**
+Send sellers only the supplier zip, or the Windows bundle for sellers without Python, with the checksum in a separate message. The internal zip and this repository stay at GildData. The tool never updates itself; a new version is a new zip.
+
+## Tests and CI
 
 ```bash
-python3 file_profiler.py /path/to/parent-folder [--out DIR] [--name LABEL]
+pip install openpyxl
+for t in tests/test_*.py; do python3 "$t" || echo "FAILED $t"; done
 ```
-Windows: `run.bat` (drag the folder onto it; uses a bundled Python if a `python/` folder sits next to it).
-macOS: `run.command`.
 
-"Project" = each folder directly inside the one you choose; loose files there become `(root)`.
+53 test files: synthetic trees with known counts, damaged files, planted markers that must not leak, resume after a crash, Windows network share behaviour, memory limits, the browser page, the Fusion connector against a local fake, and the catalogue end to end. CI (`.github/workflows/ci.yml`) runs them on Windows, macOS and Linux with Python 3.9 and 3.12, builds and runs the Docker image sealed, builds and runs the Windows bundle, and builds the release zips.
 
-## What is in the zip
+## Repository layout
 
-`Files.csv` (project, file_no, ext, size_bytes, modified_utc, depth, header_signature, dir_id, asm_name) ·
-`Dirs.csv` (anonymous folder tree) · `Projects.csv` · `Extensions.csv` · `Run_info.csv` (version, OS, mode native/docker, totals, errors) · a plain-language note.
+| Path | What |
+|---|---|
+| `gilddesign.py` | The command line: `check`, `quick`, `extract`, `cloud`, `ui`, `verify`, `compile`, `compare`, `catalogue` |
+| `file_profiler.py`, `cad_links.py`, `dwg_sheets.py`, `name_anon.py`, `sysmetrics.py` | The profiling engine (built on data847/folder-profiler, upstream commit in `UPSTREAM_COMMIT`) |
+| `gd_check.py`, `gd_signals.py`, `gd_manifest.py`, `gd_version.py` | GildData's seller side layer: preflight, compliance and fingerprint readers, manifest, version and edition |
+| `gd_catalogue.py`, `gd_compare.py` | GildData's internal side: catalogue, QC flags, score cards, comparison |
+| `profile-compile/` | The compiler (zips to the compiled workbook) and its mapping tables |
+| `ui.py`, `fusion_cloud_profiler.py` | The local browser page and the Autodesk Fusion connector |
+| `run*.bat`, `run*.command`, `run-docker.*`, `Dockerfile`, `docker-compose.yml` | Launchers |
+| `tools/build_release.py` | Release zips |
+| `docs/ENGINE.md` | The engine's own documentation: detail levels, network shares, resume, sheet counting, what was verified on real files |
+| `README_FIRST.txt` | The one page guide inside the seller zip |
 
-`header_signature` is built only from fixed vocabularies, e.g. `STEP:AP214:SolidWorks`, `IFC:IFC4:Revit`,
-`IGES:ArchiCAD`, `DXF:AC1027:3D`, `DWG:AC1032`, `SIM:CalculiX`, `MESH:GMSH`, `PDF`. Raw header text is never kept.
-OS clutter (`.DS_Store`, `Thumbs.db`, `desktop.ini`) is skipped and counted in `Run_info.csv`.
+## Known limits and open items
 
-## Compile (the profile-compile scripts)
-
-```bash
-python3 profile-compile/scripts/compile_profiles.py /folder/of/zips [--unique] [--pdf-drawings auto|none|all] [--project-by auto|structure|folder] [--no-assembly-breakdown]
-```
-Writes `Project_Compiled.csv`, `File_Level.csv`, `Project_Stats.csv`, `Review.csv` (+ `compiled.xlsx` if `openpyxl`
-is installed). Rules are two editable CSVs in `scripts/mapping/`. See `profile-compile/SKILL.md`;
-the folder can also be loaded into an AI assistant as a skill to use it conversationally.
-
-**Assembly Breakdown (estimate):** real part-to-assembly links live inside binary CAD files and are not readable without the CAD software.
-`--estimate-assemblies` fills the tab with an ESTIMATE whose rows sum to each project's totals: with profiler >= 1.2 each
-part/drawing/neutral file goes to the assembly in its own folder, else the nearest folder above, else is spread over the nearest
-assemblies (**folder-based**, real or coded assembly names); older profiles get an **even split** with placeholder names `EST_nnn`.
-Folders are not CAD links, so always treat it as an estimate and *PDF Drawings* (default 0 — a PDF's content type is unknowable from
-metrics; `--pdf-drawings all` counts every PDF).
-
-## Tests
-
-```bash
-python3 tests/test_no_leak.py       # secrets planted in contents/names/folders must not appear in the output
-python3 tests/test_signatures.py    # header tags for STEP/IFC/IGES/DXF/DWG/CalculiX/GMSH/VTK/PDF…
-python3 tests/test_end_to_end.py    # synthetic tree -> profiler -> compiler -> expected sheet rows
-```
-Everything above also runs inside the Docker image (`docker run --rm --tmpfs /tmp --entrypoint python folder-profiler:1.1 /app/tests/test_no_leak.py`).
+- AutoCAD 2007 (R2007) drawings use a layout the sheet counter does not decode; they are reported as unsupported. DWG external reference names are compressed inside the file and are not read; DXF ones are.
+- Revit, CATIA, Creo and NX readers were written from the published format descriptions and checked on public samples only; counts from real seller files should be reviewed on the first pilot.
+- Score weights and thresholds are starting values until tuned on real datasets; the Method Notes tab prints the values used.
+- The profiler has run on Windows in CI and on synthetic trees of 300,000 files; a run against a real Windows file server is still to be done on the first pilot.

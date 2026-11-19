@@ -9,7 +9,7 @@ cloud, ui). The release builder writes the word into the file EDITION; a checkou
 import os
 
 TOOL_NAME = "GildData Design Data Profiler"
-TOOL_VERSION = "0.3.0"
+TOOL_VERSION = "0.4.0"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # Key for the opt in design file fingerprints (gd_signals.fingerprint). The same key in every release, so the same file gives the same
